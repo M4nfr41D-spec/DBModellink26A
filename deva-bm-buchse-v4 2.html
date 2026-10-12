@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>DEVA BM | Gleitlagerbuchse 3D v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0a;--surf:rgba(14,14,14,0.93);
+  --b1:#252525;--b2:#383838;
+  --tx:#e8e8e8;--d1:#888;--d2:#505050;
+  --ac:#82e84f;--mo:'JetBrains Mono',monospace;
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--tx);
+  font-family:'Archivo',-apple-system,sans-serif;overflow:hidden;
+  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+#vp{position:fixed;inset:0}
+canvas{display:block;touch-action:none}
+
+.topbar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;
+  align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;flex-wrap:wrap;
+  background:linear-gradient(to bottom,rgba(10,10,10,.95),transparent);pointer-events:none}
+.topbar>*{pointer-events:auto}
+.brand{display:flex;flex-direction:column;gap:3px;padding-left:11px;position:relative}
+.brand::before{content:'';position:absolute;left:0;top:2px;bottom:2px;width:2px;background:var(--ac)}
+.btag{font:500 9px/1 var(--mo);letter-spacing:.22em;color:var(--d1);text-transform:uppercase;
+  display:flex;align-items:center;gap:6px}
+.bdot{width:5px;height:5px;background:var(--ac);border-radius:50%;display:inline-block;
+  animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.btitle{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.btitle .ac{color:var(--ac)}
+.bsub{font:400 9px/1.3 var(--mo);letter-spacing:.05em;color:var(--d2)}
+@media(max-width:820px){.bsub{display:none}}
+.modes{display:flex;background:var(--surf);border:1px solid var(--b1);backdrop-filter:blur(10px)}
+.mode{padding:8px 11px;background:transparent;border:none;color:var(--d1);
+  font:500 10px/1 var(--mo);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  border-right:1px solid var(--b1);transition:color .15s,background .15s;white-space:nowrap}
+.mode:last-child{border-right:none}
+.mode:hover{color:var(--tx)}
+.mode.active{color:var(--bg);background:var(--ac)}
+
+.hud{position:fixed;top:78px;left:12px;z-index:15;pointer-events:none;
+  text-align:left;font:400 9px/1.85 var(--mo);color:var(--d2);letter-spacing:.07em}
+.hud .v{color:var(--ac)}
+.hud .w{color:#e8b04f}
+.pnote{font:400 9px/1.4 var(--mo);color:var(--d2);margin-top:2px}
+.pnote.w{color:#e8b04f}
+.pbtn:disabled{opacity:.3;cursor:not-allowed}
+.lerr{font:400 10px/1.5 var(--mo);color:#e8b04f;max-width:80vw;text-align:center;white-space:pre-wrap}
+
+/* ─── CONTROLS ─── */
+.ctrl{position:fixed;top:58px;right:12px;bottom:12px;width:276px;z-index:10;
+  background:var(--surf);border:1px solid var(--b1);backdrop-filter:blur(14px);
+  display:flex;flex-direction:column;overflow:hidden}
+.ctabs{display:flex;flex-shrink:0;border-bottom:1px solid var(--b1)}
+.ctab{flex:1;padding:10px 4px;background:transparent;border:none;color:var(--d1);
+  font:500 9px/1 var(--mo);letter-spacing:.07em;text-transform:uppercase;cursor:pointer;
+  border-right:1px solid var(--b1);transition:color .14s,background .14s}
+.ctab:last-child{border-right:none}
+.ctab:hover{color:var(--tx)}
+.ctab.on{color:var(--bg);background:var(--ac)}
+.cbody{flex:1;overflow-y:auto;overflow-x:hidden}
+.cbody::-webkit-scrollbar{width:2px}
+.cbody::-webkit-scrollbar-thumb{background:var(--b2)}
+.cpage{display:none;padding:10px 13px 14px}
+.cpage.on{display:block}
+.cfoot{display:flex;gap:4px;padding:8px 11px;border-top:1px solid var(--b1);flex-shrink:0}
+
+/* ─── PARAM ROW ─── */
+.p{padding:7px 0;border-top:1px solid var(--b1)}
+.p:first-child{border-top:none;padding-top:0}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.pl{font-size:11px;color:var(--tx)}
+.pv{font:500 11px/1 var(--mo);color:var(--ac)}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;
+  background:transparent;cursor:pointer;height:28px;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--b2)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
+  background:var(--ac);margin-top:-7px;border-radius:2px}
+input[type=range]::-moz-range-track{height:2px;background:var(--b2);border:none}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--ac);
+  border:none;border-radius:2px}
+
+/* ─── PATTERN BUTTONS ─── */
+.pats{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px}
+.pbtn{padding:10px 6px;background:transparent;border:1px solid var(--b2);color:var(--d1);
+  font:500 9px/1.4 var(--mo);letter-spacing:.05em;text-transform:uppercase;
+  cursor:pointer;text-align:center;transition:all .15s;min-height:52px}
+.pbtn:hover{color:var(--tx);border-color:var(--d1)}
+.pbtn.on{color:var(--bg);background:var(--ac);border-color:var(--ac)}
+.pi{font-size:15px;display:block;margin-bottom:3px}
+.pbadge{font:400 8px/1 var(--mo);letter-spacing:.06em;opacity:.7;display:block;margin-top:2px}
+
+/* ─── TOGGLE & RESET ─── */
+.tog,.rst{flex:1;padding:9px 4px;background:transparent;border:1px solid var(--b2);color:var(--d1);
+  font:500 9px/1 var(--mo);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  transition:all .15s;min-height:36px}
+.tog:hover,.rst:hover{color:var(--tx);border-color:var(--d1)}
+.tog.on{color:var(--bg);background:var(--ac);border-color:var(--ac)}
+.rst:hover{color:var(--ac);border-color:var(--ac)}
+
+/* ─── TEXTURE IMPORT ─── */
+.tex-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.tex-lbl{display:inline-flex;align-items:center;gap:5px;
+  padding:7px 10px;border:1px solid var(--b2);color:var(--d1);
+  font:500 9px/1 var(--mo);letter-spacing:.07em;text-transform:uppercase;
+  cursor:pointer;transition:all .15s;flex-shrink:0}
+.tex-lbl:hover{color:var(--tx);border-color:var(--d1)}
+.tex-lbl.loaded{color:var(--ac);border-color:var(--ac)}
+.tex-name{font:400 9px/1 var(--mo);color:var(--d2);flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tex-clear{background:none;border:1px solid var(--b2);color:var(--d2);
+  padding:4px 6px;font:500 9px/1 var(--mo);cursor:pointer;flex-shrink:0}
+.tex-clear:hover{color:var(--ac);border-color:var(--ac)}
+
+/* ─── LEGEND (desktop) ─── */
+.leg{position:fixed;bottom:12px;left:12px;z-index:10;
+  background:var(--surf);border:1px solid var(--b1);padding:12px 14px;
+  backdrop-filter:blur(12px);min-width:238px;max-width:270px}
+.lhd{font:500 9px/1 var(--mo);letter-spacing:.22em;color:var(--d2);
+  text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.lhl{width:14px;height:2px;background:var(--ac);display:inline-block}
+.lr{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--b1)}
+.lr:first-of-type{border-top:none;padding-top:0}
+.sw{width:14px;height:14px;flex-shrink:0;border:1px solid var(--b2)}
+.lt{display:flex;flex-direction:column;gap:2px}
+.ln{font-size:11px;color:var(--tx);font-weight:500}
+.ld{font:400 10px/1 var(--mo);color:var(--d1)}
+.lusp{margin-top:9px;padding-top:9px;border-top:1px solid var(--b1);
+  display:flex;flex-direction:column;gap:5px}
+.lu{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.luv{font:500 10px/1 var(--mo);color:var(--ac);white-space:nowrap}
+.luk{font-size:10px;color:var(--d1);text-align:right}
+.lfoot{margin-top:10px;padding-top:8px;border-top:1px solid var(--b1);
+  font:500 8px/1 var(--mo);letter-spacing:.24em;color:var(--d2);text-transform:uppercase}
+
+/* ─── LOADER ─── */
+.loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);z-index:100;transition:opacity .4s}
+.loader.hide{opacity:0;pointer-events:none}
+.lbox{display:flex;flex-direction:column;align-items:center;gap:12px}
+.lbar{width:34px;height:2px;background:var(--ac);animation:lgrow 1.1s ease-in-out infinite alternate}
+@keyframes lgrow{from{width:14px;opacity:.4}to{width:52px;opacity:1}}
+.ltxt{font:500 11px/1 var(--mo);letter-spacing:.35em;color:var(--tx);text-transform:uppercase}
+.lsub{font:400 9px/1 var(--mo);letter-spacing:.14em;color:var(--d2);text-transform:uppercase}
+
+/* ─── MOBILE ─── */
+@media(max-width:820px){
+  .hud{display:none} .leg{display:none}
+  .ctrl{top:auto;left:0;right:0;bottom:0;width:100%;height:44vh;
+    border-left:none;border-right:none;border-bottom:none;border-radius:0}
+  .ctab{padding:12px 4px}
+  .tog,.rst{min-height:42px}
+  .pbtn{min-height:58px}
+  input[type=range]{height:36px}
+  input[type=range]::-webkit-slider-thumb{width:22px;height:22px;margin-top:-10px}
+}
+</style>
+</head>
+<body>
+
+<div id="vp"></div>
+<div class="loader" id="loader">
+  <div class="lbox">
+    <div class="lbar"></div>
+    <div class="ltxt">DEVA · BM-Series</div>
+    <div class="lsub">3D-Produktvisualisierung wird geladen</div>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="btag"><span class="bdot"></span>DEVA · deva.bm® · Bi-Metall-Gleitlager</div>
+    <div class="btitle">Gleitlagerbuchse <span class="ac">Stahlrücken + Sinterbronze mit Graphit</span></div>
+    <div class="bsub">Wartungsfrei · Selbstschmierend · Für Wasserkraft, Stahlbau &amp; Schwerindustrie</div>
+  </div>
+  <div class="modes">
+    <button class="mode active" data-mode="bushing">Buchse</button>
+    <button class="mode" data-mode="section">Schnitt</button>
+    <button class="mode" data-mode="bore">Bohrung</button>
+    <button class="mode" data-mode="layers">Schichten</button>
+  </div>
+</div>
+
+<div class="hud" id="hud"></div>
+
+<div class="leg">
+  <div class="lhd"><span class="lhl"></span>Werkstoffaufbau</div>
+  <div class="lr">
+    <div class="sw" style="background:linear-gradient(135deg,#d4ac30,#907010)"></div>
+    <div class="lt"><div class="ln">Sinterbronze + Graphit</div>
+      <div class="ld">Gleitschicht S<sub>L</sub> · <span id="lbt">0,70</span>&thinsp;mm · selbstschmierend</div></div>
+  </div>
+  <div class="lr">
+    <div class="sw" style="background:linear-gradient(135deg,#c08040,#7a4820)"></div>
+    <div class="lt"><div class="ln">Stahlrücken (außen)</div>
+      <div class="ld">Trägerlage · <span id="lst">1,80</span>&thinsp;mm · Presssitz H7</div></div>
+  </div>
+  <div class="lr">
+    <div class="sw" style="background:#0e0e12"></div>
+    <div class="lt"><div class="ln" id="lpat">Glatte Gleitfläche</div>
+      <div class="ld">Oberflächen-Konfiguration</div></div>
+  </div>
+  <div class="lusp">
+    <div class="lu"><span class="luv">wartungsfrei</span><span class="luk">Betrieb ohne Nachschmierung</span></div>
+    <div class="lu"><span class="luv">−190…+280&thinsp;°C</span><span class="luk">Einsatztemperatur (je nach Legierung)</span></div>
+    <div class="lu"><span class="luv">trocken &amp; nass</span><span class="luk">auch unter Wasser einsetzbar</span></div>
+  </div>
+  <div class="lfoot">DEVA · Engineered Bearing Solutions</div>
+</div>
+
+<div class="ctrl" id="ctrl">
+  <div class="ctabs">
+    <button class="ctab on"  data-ctab="surface">Fläche</button>
+    <button class="ctab"     data-ctab="geo">Geo</button>
+    <button class="ctab"     data-ctab="light">Licht</button>
+    <button class="ctab"     data-ctab="mat">Material</button>
+  </div>
+  <div class="cbody">
+
+    <!-- TAB: Gleitschicht-Muster -->
+    <div class="cpage on" id="cp-surface">
+      <div class="pats">
+        <button class="pbtn on" data-pat="smooth">
+          <span class="pi">○</span>Glatt
+        </button>
+        <button class="pbtn" data-pat="cross">
+          <span class="pi">◇</span>Kreuz-Reinigungsnuten
+          <span class="pbadge">ab D1 &gt; 20</span>
+        </button>
+        <button class="pbtn" data-pat="dimples">
+          <span class="pi">∷</span>Dimples
+          <span class="pbadge">ab D1 ≥ 28 · SS 2–5</span>
+        </button>
+        <button class="pbtn" data-pat="spiral">
+          <span class="pi">↗</span>Spiral-Schmiernut
+          <span class="pbadge">Sonder</span>
+        </button>
+      </div>
+      <div class="pnote" id="patnote"></div>
+      <div class="p">
+        <div class="ph"><span class="pl">Nut-/Dimple-Tiefe (max. bis Tragrücken)</span><span class="pv" id="vbump">0,5</span></div>
+        <input type="range" id="sbump" min="0.1" max="1" step="0.05" value="0.5">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Nut-/Dimple-Dichte</span><span class="pv"><span id="vng">14</span></span></div>
+        <input type="range" id="sng" min="6" max="32" step="1" value="14">
+        <div class="pnote">Nutmaße nicht im Katalog – Darstellung nach Foto</div>
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Gleitschicht-Textur (PNG/JPG)</span></div>
+        <div class="tex-row">
+          <label class="tex-lbl" for="tin-b" id="tlbl-b">📁 Bild laden</label>
+          <input type="file" id="tin-b" accept=".png,.jpg,.jpeg,.webp" hidden>
+          <span class="tex-name" id="tname-b">Standard</span>
+          <button class="tex-clear" id="tclr-b" title="Zurücksetzen">✕</button>
+        </div>
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Textur-Skalierung</span><span class="pv">×<span id="vts">3</span></span></div>
+        <input type="range" id="sts" min="1" max="16" step="0.5" value="3">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Pattern-Overlay (optional)</span></div>
+        <div class="tex-row">
+          <label class="tex-lbl" for="tin-p" id="tlbl-p">📁 Bild laden</label>
+          <input type="file" id="tin-p" accept=".png,.jpg,.jpeg,.webp" hidden>
+          <span class="tex-name" id="tname-p">Keins</span>
+          <button class="tex-clear" id="tclr-p" title="Entfernen">✕</button>
+        </div>
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Pattern-Raster (Mesh)</span><span class="pv">×<span id="vpm">4</span></span></div>
+        <input type="range" id="spm" min="1" max="20" step="1" value="4">
+      </div>
+    </div>
+
+    <!-- TAB: Geometrie -->
+    <div class="cpage" id="cp-geo">
+      <div class="p">
+        <div class="ph"><span class="pl">Innen-Ø D1 (Katalog)</span><span class="pv"><span id="vid">50</span>&thinsp;mm</span></div>
+        <input type="range" id="sid" min="0" max="52" step="1" value="19">
+        <div class="pnote" id="catnote"></div>
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Lagerbreite B1</span><span class="pv"><span id="vlen">50</span>&thinsp;mm</span></div>
+        <input type="range" id="slen" min="0" max="16" step="1" value="6">
+        <div class="pnote" id="lennote"></div>
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Gleitschicht S<sub>L</sub></span><span class="pv"><span id="vbt">0,70</span>&thinsp;mm</span></div>
+        <input type="range" id="sbt" min="0.7" max="1.5" step="0.05" value="0.7">
+        <div class="pnote">Default = Katalog-Minimum</div>
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Schicht-Überhöhung</span><span class="pv">×<span id="vex">2</span></span></div>
+        <input type="range" id="sex" min="1" max="8" step="1" value="2">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Naht-Spalt (Stoßfuge)</span><span class="pv"><span id="vgap">0</span>°</span></div>
+        <input type="range" id="sgap" min="0" max="30" step="1" value="0">
+      </div>
+    </div>
+
+    <!-- TAB: Beleuchtung -->
+    <div class="cpage" id="cp-light">
+      <div class="p">
+        <div class="ph"><span class="pl">Intensität</span><span class="pv" id="vli">1,2</span></div>
+        <input type="range" id="sli" min="0.1" max="3" step="0.05" value="1.2">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Azimut</span><span class="pv"><span id="vlaz">50</span>°</span></div>
+        <input type="range" id="slaz" min="0" max="360" step="5" value="50">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Elevation</span><span class="pv"><span id="vlel">65</span>°</span></div>
+        <input type="range" id="slel" min="5" max="89" step="1" value="65">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Rim-Licht (grün)</span><span class="pv" id="vrim">0,25</span></div>
+        <input type="range" id="srim" min="0" max="1" step="0.05" value="0.25">
+      </div>
+    </div>
+
+    <!-- TAB: Werkstoff + Textur-Import -->
+    <div class="cpage" id="cp-mat">
+      <div class="p">
+        <div class="ph"><span class="pl">Stahl · Metalness</span><span class="pv" id="vsm">0,85</span></div>
+        <input type="range" id="ssm" min="0.3" max="1" step="0.05" value="0.85">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Stahl · Roughness</span><span class="pv" id="vsr">0,35</span></div>
+        <input type="range" id="ssr" min="0.1" max="0.9" step="0.05" value="0.35">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Bronze · Metalness</span><span class="pv" id="vbm">0,55</span></div>
+        <input type="range" id="sbm" min="0.2" max="0.9" step="0.05" value="0.55">
+      </div>
+      <div class="p">
+        <div class="ph"><span class="pl">Bronze · Roughness</span><span class="pv" id="vbr">0,62</span></div>
+        <input type="range" id="sbr" min="0.2" max="0.95" step="0.05" value="0.62">
+      </div>
+
+      <!-- Textur-Import Stahl (Außen) -->
+      <div class="p">
+        <div class="ph"><span class="pl">Außentextur (Stahl) PNG/JPG</span></div>
+        <div class="tex-row">
+          <label class="tex-lbl" for="tin-s" id="tlbl-s">📁 Bild laden</label>
+          <input type="file" id="tin-s" accept=".png,.jpg,.jpeg,.webp" hidden>
+          <span class="tex-name" id="tname-s">Standard</span>
+          <button class="tex-clear" id="tclr-s" title="Zurücksetzen">✕</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="cfoot">
+    <button class="tog on" id="trot">Auto-Rot</button>
+    <button class="tog"    id="tgap">Spalt</button>
+    <button class="rst"    id="tcap">PNG ↓</button>
+    <button class="rst"    id="trst">Reset</button>
+  </div>
+</div>
+
+<script>
+// Start-Diagnose: jeder Fehler erscheint im Loader statt endlosem "wird geladen"
+window.__showErr=function(m){var e=document.getElementById('lerr');if(e&&!e.textContent)e.textContent='⚠ '+m;};
+window.addEventListener('error',function(ev){window.__showErr((ev.message||'Ladefehler')+(ev.lineno?' (Zeile '+ev.lineno+')':''));});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"><\/script>');</script>
+<script>
+if(!window.THREE){window.__showErr('Three.js konnte nicht geladen werden – Internetverbindung nötig (cdnjs / jsdelivr).');throw new Error('THREE missing');}
+/* ============================================================
+   DEVA BM · Gleitlagerbuchse v4 — Katalogdaten deva.bm (Tab. 6.1.1)
+   — 3D-Nuten (Spiral + Kreuz)
+   — Cap-Ausrichtung korrigiert (thetaStart = -PI/2)
+   — Textur-Import (PNG/JPG) für Stahl + Bronze
+   ============================================================ */
+
+// ─── STATE ───────────────────────────────────────────────────
+// ─── KATALOG deva.bm (Tab. 6.1.1 Tenneco / 8.1.1 FM 06/2018) ──
+// Bänder: D1-Werte, Wanddicke SS, min. Gleitschicht SL, Innenfase C1, Außenfase C2 (15°), Bohrungstoleranz
+const CAT = [
+  {d:[10,12,14,15,16,18],        SS:1.0, SL:0.40, C1:0.7, C2:0.5, tol:'H9'},
+  {d:[20,22,24,25],              SS:1.5, SL:0.50, C1:1.0, C2:0.6, tol:'H8'},
+  {d:[28,30,32,35,36,38,40,42],  SS:2.0, SL:0.75, C1:1.5, C2:0.8, tol:'H8'},
+  {d:[45,50,55,60,65,70],        SS:2.5, SL:0.70, C1:1.8, C2:1.0, tol:'H8 / H9'},
+  {d:[75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,160,180,200,220,240],
+                                 SS:3.0, SL:1.00, C1:2.5, C2:1.5, tol:'H8 / H9'},
+  {d:[250,300,350,400,500,600,700,800], SS:5.0, SL:1.50, C1:3.0, C2:2.0, tol:'H8 / H9'},
+];
+const D1_LIST = CAT.flatMap(b=>b.d);                       // 52 Werte
+const B1_LIST = [10,15,20,25,30,40,50,60,70,80,100,120,140,150,160,180,200];
+const band = d1 => CAT.find(b=>b.d.includes(d1)) || CAT[CAT.length-1];
+const TAN15 = Math.tan(15*Math.PI/180);
+
+const DEF = {
+  innerD:50, outerD:55, length:50,
+  bronzeT:0.70, bronzeExagg:2, gapAngle:0,
+  surfacePattern:'smooth', grooveBump:0.5, numGrooves:14, texScale:3, patternMesh:4,
+  mode:'bushing', autoRotate:true,
+  lightIntensity:1.2, lightAz:50, lightEl:65, rimInt:0.25,
+  steelM:0.85, steelR:0.35, bronzeM:0.55, bronzeR:0.62,
+};
+const S = { ...DEF };
+const MM = 10;
+
+// ─── THREE.JS ────────────────────────────────────────────────
+const scene    = new THREE.Scene();
+const camera   = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 0.01, 200);
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:false }); }
+catch(e){ window.__showErr('WebGL nicht verfügbar auf diesem Gerät/Browser.'); throw e; }
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputEncoding  = THREE.sRGBEncoding;
+renderer.toneMapping     = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.localClippingEnabled = true;
+document.getElementById('vp').appendChild(renderer.domElement);
+scene.background = new THREE.Color(0x0a0a0a);
+scene.fog = new THREE.Fog(0x0a0a0a, 25, 80);
+
+// ─── LIGHTS ──────────────────────────────────────────────────
+const keyL  = new THREE.DirectionalLight(0xfff5e0, 1.2);
+const fillL = new THREE.DirectionalLight(0xa0b8ff, 0.45);
+const rimL  = new THREE.DirectionalLight(0x82e84f, 0.25);
+const boreL = new THREE.PointLight(0xffd0a0, 0.35, 22);
+fillL.position.set(-6, 4, -5);
+boreL.position.set(0, 0, 0);
+scene.add(keyL, fillL, rimL, boreL, new THREE.AmbientLight(0x262626, 0.9));
+
+function applyLighting() {
+  const az=S.lightAz*Math.PI/180, el=S.lightEl*Math.PI/180, d=14;
+  keyL.intensity=S.lightIntensity;
+  keyL.position.set(d*Math.cos(el)*Math.sin(az), d*Math.sin(el), d*Math.cos(el)*Math.cos(az));
+  rimL.intensity=S.rimInt;
+  rimL.position.set(-d*Math.cos(el)*Math.sin(az), -d*Math.sin(el)*.5+2, -d*Math.cos(el)*Math.cos(az));
+}
+applyLighting();
+
+// ─── TEXTURES ────────────────────────────────────────────────
+const BRONZE_COL = '#c49828';
+const STEEL_COL  = '#b87840';
+const texCache   = {};
+let userSteelTex  = null;     // imported steel texture (THREE.Texture) or null
+let bronzeBaseImg = null;     // imported bronze base IMAGE (raw) or null → default
+let patternImg    = null;     // imported pattern overlay IMAGE (raw) or null
+let activeBronzeTex = null;   // composite bronze map (base + pattern overlay)
+const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
+
+function addNoise(ctx, W, H, amt) {
+  const id=ctx.getImageData(0,0,W,H), d=id.data;
+  for (let i=0;i<d.length;i+=4){
+    const n=(Math.random()-.5)*255*amt;
+    d[i]=Math.min(255,Math.max(0,d[i]+n));
+    d[i+1]=Math.min(255,Math.max(0,d[i+1]+n));
+    d[i+2]=Math.min(255,Math.max(0,d[i+2]+n));
+  }
+  ctx.putImageData(id,0,0);
+}
+function mkTex(canvas,ru,rv){
+  const t=new THREE.CanvasTexture(canvas);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.repeat.set(ru,rv);
+  return t;
+}
+function drawGraphiteFlakes(ctx, W, H, count) {
+  for (let i=0;i<count;i++){
+    const x=Math.random()*W, y=Math.random()*H;
+    const sx=4+Math.random()*20, sy=2+Math.random()*8;
+    const a=Math.random()*Math.PI;
+    const alpha=0.55+Math.random()*.45;
+    const r=~~(12+Math.random()*18), g=~~(18+Math.random()*28), b=~~(50+Math.random()*60);
+    ctx.save(); ctx.translate(x,y); ctx.rotate(a);
+    ctx.fillStyle=`rgba(${r},${g},${b},${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(sx*.6,0);
+    ctx.bezierCurveTo(sx,-sy*.8,sx*.8,sy,0,sy);
+    ctx.bezierCurveTo(-sx*.6,sy*.9,-sx,-sy*.3,-sx*.4,-sy*.5);
+    ctx.bezierCurveTo(-sx*.1,-sy,sx*.3,-sy,sx*.6,0);
+    ctx.fill(); ctx.restore();
+  }
+}
+
+// Neutrale Basistextur (1 Bild, KEIN prozedurales Muster) — Standardfläche
+function genBronzeBase() {
+  const W=256,H=256;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=BRONZE_COL; ctx.fillRect(0,0,W,H);
+  addNoise(ctx,W,H,.04);  // nur feines Korn, kein Muster
+  return {map:mkTex(c,1,1), bumpMap:null};
+}
+
+function genSteelTex(){
+  // Neutrale Außentextur (1 Bild, kein Muster)
+  const W=256,H=256;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=STEEL_COL;ctx.fillRect(0,0,W,H);
+  addNoise(ctx,W,H,.03);  // nur feines Korn
+  const t = mkTex(c,1,1);
+  t.anisotropy = MAX_ANISO;
+  return t;
+}
+
+function initTextures(){
+  texCache.steel  = genSteelTex();
+  composeBronze();
+}
+
+// Composite der Gleitschicht-Textur: Basis (Standard oder importiert) + Pattern-Overlay
+function composeBronze(){
+  const W = 2048, H = 2048;  // hohe Auflösung für scharfe Darstellung
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+
+  // Basis-Schicht
+  if (bronzeBaseImg) {
+    ctx.drawImage(bronzeBaseImg, 0, 0, W, H);
+  } else {
+    ctx.fillStyle = BRONZE_COL; ctx.fillRect(0, 0, W, H);
+    addNoise(ctx, W, H, 0.04);  // feines Korn, kein Muster
+  }
+
+  // Pattern-Overlay (optional, gekachelt mit einstellbarem Raster)
+  if (patternImg) {
+    ctx.globalCompositeOperation = 'multiply';
+    const m = Math.max(1, S.patternMesh);
+    const tw = W / m, thh = H / m;
+    for (let i = 0; i < m; i++)
+      for (let j = 0; j < m; j++)
+        ctx.drawImage(patternImg, i*tw, j*thh, tw, thh);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (activeBronzeTex) activeBronzeTex.dispose();
+  activeBronzeTex = new THREE.CanvasTexture(c);
+  activeBronzeTex.wrapS = activeBronzeTex.wrapT = THREE.RepeatWrapping;
+  activeBronzeTex.anisotropy = MAX_ANISO;
+  activeBronzeTex.repeat.set(S.texScale, S.texScale);
+  activeBronzeTex.needsUpdate = true;
+  return activeBronzeTex;
+}
+
+// Nur Skalierung aktualisieren (kein Recompose nötig)
+function applyTexScale(){
+  if (activeBronzeTex){ activeBronzeTex.repeat.set(S.texScale, S.texScale); activeBronzeTex.needsUpdate = true; }
+}
+
+// ─── 3D GROOVE GEOMETRY ──────────────────────────────────────
+// Schmale, prägnant eingefräste Nut (wie real): schmaler Sinus-Kanal,
+// breite Stege dazwischen. GW = Nutbreite als Anteil der Teilung.
+const GW = 0.16;
+function grooveProfile(phase, gwF) {
+  if (phase >= gwF) return 0;
+  return Math.sin((phase / gwF) * Math.PI); // 0 an Rändern, 1 in Nutmitte
+}
+
+function createGroovedBore(Ri, len, th, pattern, maxDepth) {
+  // Auflösung an Nutdichte koppeln, damit schmale Nuten sauber aufgelöst sind
+  const radN = Math.min(640, Math.max(280, S.numGrooves * 22));
+  const hN = Math.round(radN * 0.55);
+  const geo = new THREE.CylinderGeometry(Ri, Ri, len, radN, hN, true, 0, th);
+  const pos = geo.attributes.position;
+  const HL = len / 2;
+  const numG = S.numGrooves, pitch = 1.0 / numG, gwF = GW;
+  const lc = len / (2 * Math.PI * Ri);  // 45°-Faktor (physikalisch)
+  // Dimples: kalottenförmige Vertiefungen im versetzten (hex) Raster
+  const U = 2 * Math.PI * Ri, dp = U / (numG * 2), dRow = dp * 0.866, dRad = dp * 0.3;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const tN = ((Math.atan2(x, z) + 2*Math.PI) % (2*Math.PI)) / (2*Math.PI);
+    const hN_ = (y + HL) / len;
+    let d = 0;
+
+    if (pattern === 'spiral') {
+      const turns = 2;
+      const ph = ((((tN + hN_ * turns) % pitch) + pitch) % pitch) / pitch;
+      d = grooveProfile(ph, gwF);
+    } else if (pattern === 'cross') {
+      const p1 = ((((tN + hN_ * lc) % pitch) + pitch) % pitch) / pitch;
+      const p2 = ((((tN - hN_ * lc) % pitch) + pitch) % pitch) / pitch;
+      d = Math.max(grooveProfile(p1, gwF), grooveProfile(p2, gwF));
+    } else if (pattern === 'dimples') {
+      const s = tN * U, row = Math.round(y / dRow), off = (row & 1) ? dp / 2 : 0;
+      const col = Math.round((s - off) / dp);
+      const dist = Math.hypot(s - (col * dp + off), y - row * dRow);
+      if (dist < dRad) d = Math.sqrt(1 - (dist / dRad) ** 2);
+    }
+
+    if (d > 0) {
+      const r = Math.sqrt(x*x + z*z);
+      if (r > 0) {
+        const nr = r + d * maxDepth;
+        pos.setX(i, x / r * nr);
+        pos.setZ(i, z / r * nr);
+      }
+    }
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// ─── MATERIALS ───────────────────────────────────────────────
+let matS, matB, matCS, matCB, matIface;
+
+function buildMats(clip=[]) {
+  if (!activeBronzeTex) composeBronze();
+  const boreMap = activeBronzeTex;
+  const steelMap = userSteelTex || texCache.steel;
+
+  matS = new THREE.MeshStandardMaterial({
+    map: steelMap,
+    color: 0xffffff,  // kein Farb-Overlay
+    metalness:S.steelM, roughness:S.steelR,
+    side:THREE.DoubleSide, clippingPlanes:clip, clipShadows:true,
+  });
+  matB = new THREE.MeshStandardMaterial({
+    color: 0xffffff,  // kein Farb-Overlay
+    map:boreMap,
+    metalness:S.bronzeM, roughness:S.bronzeR,
+    side:THREE.DoubleSide, clippingPlanes:clip, clipShadows:true,
+  });
+  matCS = new THREE.MeshStandardMaterial({
+    color:0x888888, metalness:.75, roughness:.45,
+    side:THREE.DoubleSide, clippingPlanes:clip,
+  });
+  matCB = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map:boreMap, metalness:S.bronzeM*.85, roughness:S.bronzeR,
+    side:THREE.DoubleSide, clippingPlanes:clip,
+  });
+  matIface = new THREE.MeshStandardMaterial({
+    color:0x3a3a3a, metalness:.65, roughness:.5,
+    side:THREE.DoubleSide, clippingPlanes:clip,
+  });
+}
+
+function refreshMats(){
+  if (!matB) return;
+  const boreMap = activeBronzeTex;
+  const steelMap = userSteelTex || texCache.steel;
+  matS.map = steelMap; matS.metalness=S.steelM; matS.roughness=S.steelR; matS.needsUpdate=true;
+  matB.map=boreMap; matB.metalness=S.bronzeM; matB.roughness=S.bronzeR; matB.needsUpdate=true;
+  matCB.map=boreMap; matCB.metalness=S.bronzeM*.85; matCB.roughness=S.bronzeR; matCB.needsUpdate=true;
+}
+
+// ─── SCENE ───────────────────────────────────────────────────
+const root = new THREE.Group();
+scene.add(root);
+
+function clearRoot(){
+  while(root.children.length){ const c=root.children[0]; if(c.geometry)c.geometry.dispose(); root.remove(c); }
+}
+
+function D(){
+  const B=band(S.innerD);
+  const Ra=S.outerD/2/MM, Ri=S.innerD/2/MM, len=S.length/MM;
+  const bv=Math.min(S.bronzeT*S.bronzeExagg/MM,(Ra-Ri)*.88);
+  const Rm=Ri+bv, th=(360-S.gapAngle)*Math.PI/180;
+  // Fasen 15° (C = axiale Länge, radial = C·tan15°), geklemmt auf Schichtdicke
+  const c1=B.C1/MM, c2=B.C2/MM;
+  const c1r=Math.min(c1*TAN15,(Rm-Ri)*.8), c2r=Math.min(c2*TAN15,(Ra-Rm)*.8);
+  return {Ra,Ri,Rm,len,th,HL:len/2,c1,c2,c1r,c2r};
+}
+
+// Katalogwerte auf State anwenden (D2 aus SS, SL ≥ Minimum)
+function applyCatalog(){
+  const B=band(S.innerD);
+  S.outerD = S.innerD + 2*B.SS;
+  if (S.bronzeT < B.SL) S.bronzeT = B.SL;
+  if (S.bronzeT > B.SS*0.6) S.bronzeT = Math.max(B.SL, +(B.SS*0.6).toFixed(2));
+  const el=document.getElementById('sbt');
+  if (el){ el.min=B.SL; el.max=Math.max(B.SL, +(B.SS*0.6).toFixed(2)); el.value=S.bronzeT; }
+  const vb=document.getElementById('vbt'); if(vb) vb.textContent=f2(S.bronzeT);
+  // Oberflächen-Verfügbarkeit laut Katalog
+  const avail={smooth:true, spiral:true, cross:S.innerD>20, dimples:S.innerD>=28 && B.SS>=2 && B.SS<=5};
+  document.querySelectorAll('.pbtn').forEach(b=>{b.disabled=!avail[b.dataset.pat];});
+  const pn=document.getElementById('patnote');
+  if (!avail[S.surfacePattern]){
+    pn.textContent=`${PAT[S.surfacePattern]} bei D1 ${S.innerD} nicht lieferbar → Glatt`;
+    pn.className='pnote w'; S.surfacePattern='smooth';
+    document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('on',b.dataset.pat==='smooth'));
+  } else { pn.textContent=S.surfacePattern==='spiral'?'Spiralnut: nicht im Katalog, Sonderausführung':''; pn.className='pnote'; }
+  document.getElementById('catnote').textContent =
+    `D2 ${S.outerD} · SS ${f1(B.SS)} · SL ≥ ${f2(B.SL)} · C1/C2 ${f1(B.C1)}/${f1(B.C2)}×15° · ${B.tol}`;
+  const ln=document.getElementById('lennote');
+  if (S.innerD/S.length < 0.25){ ln.textContent='D1/B1 < 0,25 → mechanische Sicherung (z. B. Zylinderstifte) empfohlen'; ln.className='pnote w'; }
+  else { ln.textContent='B1 ± 0,25 mm'; ln.className='pnote'; }
+}
+
+// Profil (r,y) als Fläche bei Winkel angle (Schnitt- / Stoßflächen inkl. Fasen)
+function profFace(pts, angle, mat, offX=0){
+  const g=new THREE.ShapeGeometry(new THREE.Shape(pts.map(p=>new THREE.Vector2(p[0],p[1]))));
+  const pos=g.attributes.position, s=Math.sin(angle), c=Math.cos(angle);
+  for(let i=0;i<pos.count;i++){ const r=pos.getX(i), y=pos.getY(i); pos.setXYZ(i, s*r+offX, y, c*r); }
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+function profiles(){
+  const {Ra,Ri,Rm,HL,c1,c2,c1r,c2r}=D();
+  return {
+    bronze:[[Ri+c1r,HL],[Ri,HL-c1],[Ri,-HL+c1],[Ri+c1r,-HL],[Rm,-HL],[Rm,HL]],
+    steel: [[Rm,HL],[Rm,-HL],[Ra-c2r,-HL],[Ra,-HL+c2],[Ra,HL-c2],[Ra-c2r,HL]],
+  };
+}
+// Kegelstumpf für Fase: rTop bei y+h/2, rBot bei y-h/2
+function cone(rTop, rBot, h, y, th, mat){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(rTop,rBot,h,96,1,true,0,th), mat);
+  m.position.y=y; return m;
+}
+
+// ── GEOMETRY HELPERS ──
+function cyl(r, len, th, mat){
+  return new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,96,1,true,0,th), mat);
+}
+
+// !! FIX: thetaStart = -PI/2 aligns ring cap with cylinder theta=0 (+Z direction) !!
+function ringCap(ri, ro, th, mat, y){
+  const g = new THREE.RingGeometry(ri, ro, 64, 1, -Math.PI/2, th);
+  const m = new THREE.Mesh(g, mat);
+  m.rotation.x = -Math.PI/2;
+  m.position.y = y;
+  return m;
+}
+
+// Cut-face strip for cross-section closure (lies in YZ-plane at x)
+function strip(x, z1, z2, y1, y2, mat){
+  const v = new Float32Array([x,y1,z1, x,y2,z1, x,y2,z2, x,y1,z1, x,y2,z2, x,y1,z2]);
+  const n = new Float32Array([1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0, 1,0,0]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+  g.setAttribute('normal',new THREE.Float32BufferAttribute(n,3));
+  return new THREE.Mesh(g, mat);
+}
+
+// Saubere radiale Stoßfläche an der Naht (Winkel angle, radial r1→r2, axial y1→y2)
+function seamFace(angle, r1, r2, y1, y2, mat){
+  const s = Math.sin(angle), c = Math.cos(angle);
+  const v = new Float32Array([
+    s*r1,y1,c*r1, s*r2,y1,c*r2, s*r2,y2,c*r2,
+    s*r1,y1,c*r1, s*r2,y2,c*r2, s*r1,y2,c*r2,
+  ]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(v,3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+
+// ── VIEWS ──
+
+function buildBushing(clip=[]){
+  const {Ra,Ri,Rm,len,th,HL,c1,c2,c1r,c2r}=D();
+  buildMats(clip);
+
+  // Outer steel surface (zwischen den Außenfasen C2) + 15°-Fasen
+  root.add(cyl(Ra, len-2*c2, th, matS));
+  root.add(cone(Ra-c2r, Ra, c2,  HL-c2/2, th, matS));
+  root.add(cone(Ra, Ra-c2r, c2, -HL+c2/2, th, matS));
+
+  // Inner bore (zwischen den Innenfasen C1): 3D-Nuten/Dimples oder glatt
+  const use3D = ['spiral','cross','dimples'].includes(S.surfacePattern);
+  if (use3D) {
+    const depth = Math.min((Rm-Ri)*.7, Ri*.08) * (0.4 + S.grooveBump);  // ≤ Gleitschicht (max. bis Tragrücken)
+    const g = createGroovedBore(Ri, len-2*c1, th, S.surfacePattern, depth);
+    root.add(new THREE.Mesh(g, matB));
+  } else {
+    root.add(cyl(Ri, len-2*c1, th, matB));
+  }
+  root.add(cone(Ri+c1r, Ri, c1,  HL-c1/2, th, matB));
+  root.add(cone(Ri, Ri+c1r, c1, -HL+c1/2, th, matB));
+
+  if (S.gapAngle>0 || clip.length) root.add(cyl(Rm, len, th, matIface));
+
+  // Stirnflächen zwischen den Fasen
+  root.add(ringCap(Rm, Ra-c2r, th, matCS,  HL));
+  root.add(ringCap(Ri+c1r, Rm, th, matCB,  HL));
+  root.add(ringCap(Rm, Ra-c2r, th, matCS, -HL));
+  root.add(ringCap(Ri+c1r, Rm, th, matCB, -HL));
+
+  // Stoßflächen mit exaktem Fasenprofil
+  if (S.gapAngle>0) {
+    const P=profiles();
+    [0, th].forEach(a => {
+      root.add(profFace(P.bronze, a, matCB));
+      root.add(profFace(P.steel,  a, matCS));
+    });
+  }
+}
+
+const secBase=new THREE.Plane(new THREE.Vector3(1,0,0),0), secPlane=secBase.clone();
+function buildSection(){
+  // Clip: shows x≥0 (right half = longitudinal cross-section)
+  // Schnittebene wandert mit dem Modell (Clipping ist Welt-Raum) → in animate() nachgeführt
+  const clip=[secPlane];
+  buildBushing(clip);
+
+  // ── CLOSE CUT FACE ── strips at x=0 in YZ-plane
+  const noClipS = new THREE.MeshStandardMaterial({color:0x888888,metalness:.75,roughness:.45,side:THREE.DoubleSide});
+  const noClipB = new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    map:activeBronzeTex,
+    metalness:S.bronzeM,roughness:S.bronzeR,side:THREE.DoubleSide
+  });
+  const X=0.002, P=profiles();
+  [0, Math.PI].forEach(a=>{                         // vorne (+Z) und hinten (−Z)
+    root.add(profFace(P.bronze, a, noClipB, X));
+    root.add(profFace(P.steel,  a, noClipS, X));
+  });
+}
+
+function buildLayers(){
+  const {Ra,Ri,Rm,len,th,HL}=D();
+  const gap=(Ra-Ri)*1.8;
+  buildMats([]);
+  // Bronze layer (natural position)
+  root.add(cyl(Ri,len,th,matB)); root.add(cyl(Rm,len,th,matIface));
+  root.add(ringCap(Ri,Rm,th,matCB, HL)); root.add(ringCap(Ri,Rm,th,matCB,-HL));
+  // Steel layer (shifted outward)
+  root.add(cyl(Ra+gap,len,th,matS)); root.add(cyl(Rm+gap,len,th,matIface));
+  root.add(ringCap(Rm+gap,Ra+gap,th,matCS, HL)); root.add(ringCap(Rm+gap,Ra+gap,th,matCS,-HL));
+}
+
+// ─── REBUILD ─────────────────────────────────────────────────
+function rebuild(){
+  clearRoot();
+  if      (S.mode==='bushing') buildBushing();
+  else if (S.mode==='section') buildSection();
+  else if (S.mode==='bore')    buildBushing();   // camera moves inside
+  else if (S.mode==='layers')  buildLayers();
+  updateHUD(); updateLegend();
+}
+
+const PAT={smooth:'Glatte Gleitschicht',spiral:'Spiral-Schmiernut (Sonder)',cross:'Kreuz-Reinigungsnuten',dimples:'Dimples (Schmiertaschen)'};
+function updateLegend(){
+  const wall=band(S.innerD).SS;
+  document.getElementById('lbt').textContent=S.bronzeT.toFixed(2).replace('.',',');
+  document.getElementById('lst').textContent=(wall-S.bronzeT).toFixed(2).replace('.',',');
+  document.getElementById('lpat').textContent=PAT[S.surfacePattern]||'Glatt';
+}
+function updateHUD(){
+  const B=band(S.innerD);
+  const warn = S.innerD/S.length < 0.25 ? `<br><span class="w">D1/B1 &lt; 0,25 → Stiftsicherung</span>` : '';
+  document.getElementById('hud').innerHTML=
+    `<span class="v" style="letter-spacing:.12em">deva.bm ${S.innerD}×${S.outerD}×${S.length}</span><br>
+     <span>D1</span> <span class="v">${S.innerD} mm · ${B.tol}</span><br>
+     <span>D2</span> <span class="v">${S.outerD} mm</span><br>
+     <span>B1</span> <span class="v">${S.length} ±0,25 mm</span><br>
+     <span>SS</span> <span class="v">${f1(B.SS)} mm</span><br>
+     <span>SL</span> <span class="v">${f2(S.bronzeT)} mm (≥ ${f2(B.SL)})</span><br>
+     <span>C1/C2</span> <span class="v">${f1(B.C1)} / ${f1(B.C2)} × 15°</span><br>
+     <span>Schicht ×${S.bronzeExagg} überhöht</span>${warn}`;
+}
+
+// ─── CAMERA + FREIE MODELL-ROTATION (Trackball) ──────────────
+const view = {
+  radius:8, elev:0.40, minR:1, maxR:80,
+  rotSpeed:0.005, isDragging:false, lastX:0, lastY:0, sens:0.009,
+};
+
+// Abstand so, dass die Buchse ins Bild passt (statt fixem Ra-Faktor); Fog/Far skalieren mit
+function fitCam(){
+  const {Ra,len}=D();
+  // Hoch- & Querformat berücksichtigen; mobil verdeckt das Panel die unteren 44 % → Bild nach oben schieben
+  const mob = innerWidth <= 820, tanV = Math.tan(20*Math.PI/180), half = Math.max(2*Ra, len)/2;
+  const fit = Math.max(half/(tanV*(mob?0.56:1)), half/(tanV*camera.aspect)) * (mob?1.25:1.7);
+  // Bild in den freien Bereich schieben: mobil nach oben, Desktop nach links (Panel rechts)
+  if (mob) camera.setViewOffset(innerWidth, innerHeight, 0, innerHeight*0.22, innerWidth, innerHeight);
+  else camera.setViewOffset(innerWidth, innerHeight, 144, 0, innerWidth, innerHeight);
+  const m = S.mode;
+  view.radius = m==='bore' ? Ra*1.9 : m==='layers' ? fit*1.6 : fit;
+  view.minR = Ra*0.3; view.maxR = Math.max(80, fit*4);
+  boreL.distance = fit*2.5;
+  scene.fog.near = fit*2.5; scene.fog.far = fit*8;
+  camera.far = fit*12; camera.near = Math.max(0.005, fit/2000); camera.updateProjectionMatrix();
+}
+function setCam(mode){
+  let euler;
+  if (mode==='bushing'){ view.elev=0.42; view.rotSpeed=.005;  euler=new THREE.Euler(0.35,0.5,0); }
+  else if (mode==='section'){ view.elev=0.38; view.rotSpeed=.004; euler=new THREE.Euler(0.30,1.0,0); }
+  else if (mode==='bore'){ view.elev=1.18; view.rotSpeed=.003; euler=new THREE.Euler(0,0.3,0); }
+  else { view.elev=0.42; view.rotSpeed=.0035; euler=new THREE.Euler(0.35,0.5,0); }
+  root.quaternion.setFromEuler(euler);
+  fitCam();
+}
+
+function updateCam(){
+  camera.position.set(0, view.radius*Math.sin(view.elev), view.radius*Math.cos(view.elev));
+  camera.lookAt(0,0,0);
+}
+
+// Freie Rotation des MODELLS — Drag taumelt um beide Achsen
+const _ax=new THREE.Vector3(), _qa=new THREE.Quaternion(), _qb=new THREE.Quaternion();
+function rotateModel(dx, dy){
+  _qa.setFromAxisAngle(_ax.set(0,1,0), dx*view.sens);  // horizontale Drag → Welt-Y
+  _qb.setFromAxisAngle(_ax.set(1,0,0), dy*view.sens);  // vertikale Drag → Welt-X (kippen!)
+  root.quaternion.premultiply(_qb).premultiply(_qa);
+}
+
+const cv=renderer.domElement;
+cv.addEventListener('mousedown',e=>{view.isDragging=true;view.lastX=e.clientX;view.lastY=e.clientY;});
+window.addEventListener('mousemove',e=>{
+  if(!view.isDragging)return;
+  rotateModel(e.clientX-view.lastX, e.clientY-view.lastY);
+  view.lastX=e.clientX;view.lastY=e.clientY;
+});
+window.addEventListener('mouseup',()=>view.isDragging=false);
+cv.addEventListener('wheel',e=>{
+  e.preventDefault();
+  view.radius*=1+e.deltaY*.001;
+  view.radius=Math.max(view.minR,Math.min(view.maxR,view.radius));
+},{passive:false});
+
+let td=0;
+cv.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){view.isDragging=true;view.lastX=e.touches[0].clientX;view.lastY=e.touches[0].clientY;}
+  else if(e.touches.length===2)td=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+},{passive:true});
+cv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===1&&view.isDragging){
+    rotateModel(e.touches[0].clientX-view.lastX, e.touches[0].clientY-view.lastY);
+    view.lastX=e.touches[0].clientX;view.lastY=e.touches[0].clientY;
+  }else if(e.touches.length===2){
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(td>0){view.radius*=1+(td-d)*.009;view.radius=Math.max(view.minR,Math.min(view.maxR,view.radius));}
+    td=d;
+  }
+},{passive:false});
+cv.addEventListener('touchend',()=>{view.isDragging=false;td=0;});
+
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;renderer.setSize(innerWidth,innerHeight);fitCam();
+});
+
+const _qauto=new THREE.Quaternion(), _ay=new THREE.Vector3(0,1,0);
+function animate(){
+  requestAnimationFrame(animate);
+  if(S.autoRotate&&!view.isDragging){
+    _qauto.setFromAxisAngle(_ay, view.rotSpeed);
+    root.quaternion.premultiply(_qauto);
+  }
+  root.updateMatrixWorld(); secPlane.copy(secBase).applyMatrix4(root.matrixWorld);
+  updateCam();
+  renderer.render(scene,camera);
+}
+
+// ─── TEXTURE IMPORT ──────────────────────────────────────────
+// onImg(img|null) erhält das rohe Image (oder null beim Zurücksetzen).
+function setupImgImport(inputId, labelId, nameId, clearId, emptyLabel, onImg) {
+  const input  = document.getElementById(inputId);
+  const label  = document.getElementById(labelId);
+  const nameEl = document.getElementById(nameId);
+  const clear  = document.getElementById(clearId);
+  if (!input) return;
+
+  input.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    nameEl.textContent = file.name;
+    label.classList.add('loaded');
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const img = new Image();
+      img.onload = () => onImg(img);
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  clear.addEventListener('click', () => {
+    input.value = '';
+    nameEl.textContent = emptyLabel;
+    label.classList.remove('loaded');
+    onImg(null);
+  });
+}
+
+// Stahl-Außentextur (direkte Textur)
+setupImgImport('tin-s','tlbl-s','tname-s','tclr-s','Standard', img => {
+  if (img){
+    userSteelTex = new THREE.Texture(img);
+    userSteelTex.wrapS = userSteelTex.wrapT = THREE.RepeatWrapping;
+    userSteelTex.anisotropy = MAX_ANISO;
+    userSteelTex.needsUpdate = true;
+  } else userSteelTex = null;
+  refreshMats();
+});
+
+// Gleitschicht-Basistextur (Composite-Basis)
+setupImgImport('tin-b','tlbl-b','tname-b','tclr-b','Standard', img => {
+  bronzeBaseImg = img; composeBronze(); refreshMats();
+});
+
+// Pattern-Overlay (Composite-Overlay, gekachelt nach Mesh)
+setupImgImport('tin-p','tlbl-p','tname-p','tclr-p','Keins', img => {
+  patternImg = img; composeBronze(); refreshMats();
+});
+
+// ─── UI ──────────────────────────────────────────────────────
+document.querySelectorAll('.mode').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.mode').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    S.mode=btn.dataset.mode;
+    setCam(S.mode); rebuild();
+  });
+});
+
+document.querySelectorAll('.ctab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.cpage').forEach(p=>p.classList.remove('on'));
+    btn.classList.add('on');
+    document.getElementById('cp-'+btn.dataset.ctab).classList.add('on');
+  });
+});
+
+document.querySelectorAll('.pbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    S.surfacePattern=btn.dataset.pat;
+    applyCatalog(); rebuild(); updateLegend();
+  });
+});
+
+function sl(id,valId,key,fmt,needsRebuild){
+  const el=document.getElementById(id),sp=document.getElementById(valId);
+  if(!el)return;
+  el.addEventListener('input',()=>{
+    S[key]=parseFloat(el.value);
+    if(sp)sp.textContent=fmt?fmt(S[key]):S[key];
+    if(needsRebuild)rebuild();else{refreshMats();applyLighting();updateHUD();updateLegend();}
+  });
+}
+const f2=v=>v.toFixed(2).replace('.',','), f1=v=>v.toFixed(1).replace('.',','), f0=v=>Math.round(v);
+sl('sbump','vbump','grooveBump',v=>v.toFixed(1).replace('.',','),true);
+sl('sng','vng','numGrooves',f0,true);
+// Textur-Skalierung: nur Textur aktualisieren, kein Rebuild
+(()=>{ const el=document.getElementById('sts'),sp=document.getElementById('vts');
+  if(el)el.addEventListener('input',()=>{ S.texScale=parseFloat(el.value);
+    if(sp)sp.textContent=S.texScale.toString().replace('.',','); applyTexScale(); refreshMats(); }); })();
+// Pattern-Raster (Mesh): Composite neu berechnen
+(()=>{ const el=document.getElementById('spm'),sp=document.getElementById('vpm');
+  if(el)el.addEventListener('input',()=>{ S.patternMesh=parseInt(el.value,10);
+    if(sp)sp.textContent=S.patternMesh; composeBronze(); refreshMats(); }); })();
+// D1 / B1 rasten auf Katalogwerte ein (Slider = Index)
+document.getElementById('sid').addEventListener('input',e=>{
+  S.innerD=D1_LIST[+e.target.value]; document.getElementById('vid').textContent=S.innerD;
+  applyCatalog(); fitCam(); rebuild(); });
+document.getElementById('slen').addEventListener('input',e=>{
+  S.length=B1_LIST[+e.target.value]; document.getElementById('vlen').textContent=S.length;
+  applyCatalog(); fitCam(); rebuild(); });
+sl('sbt','vbt','bronzeT',f2,true);
+sl('sex','vex','bronzeExagg',f0,true); sl('sgap','vgap','gapAngle',f0,true);
+sl('sli','vli','lightIntensity',f2,false); sl('slaz','vlaz','lightAz',f0,false);
+sl('slel','vlel','lightEl',f0,false); sl('srim','vrim','rimInt',f2,false);
+sl('ssm','vsm','steelM',f2,false); sl('ssr','vsr','steelR',f2,false);
+sl('sbm','vbm','bronzeM',f2,false); sl('sbr','vbr','bronzeR',f2,false);
+
+document.getElementById('trot').addEventListener('click',e=>{
+  S.autoRotate=!S.autoRotate; e.target.classList.toggle('on',S.autoRotate);});
+
+// PNG-Export für Angebote / Präsentationen — rendert frisch, dann Capture
+document.getElementById('tcap').addEventListener('click',()=>{
+  camera.clearViewOffset(); camera.updateProjectionMatrix();   // Export zentriert, ohne Panel-Versatz
+  renderer.render(scene,camera);
+  const a=document.createElement('a');
+  a.download=`DEVA-BM_${S.innerD}x${S.outerD}x${S.length}mm_${S.mode}.png`;
+  a.href=renderer.domElement.toDataURL('image/png');
+  const r=view.radius; fitCam(); view.radius=r;
+  a.click();
+});
+document.getElementById('tgap').addEventListener('click',e=>{
+  const on=e.target.classList.toggle('on');
+  S.gapAngle=on?8:0;
+  document.getElementById('sgap').value=S.gapAngle;
+  document.getElementById('vgap').textContent=S.gapAngle;
+  rebuild();
+});
+document.getElementById('trst').addEventListener('click',()=>{
+  Object.assign(S,DEF);
+  document.getElementById('sid').value=D1_LIST.indexOf(S.innerD);
+  document.getElementById('slen').value=B1_LIST.indexOf(S.length);
+  const pairs=[['sbt','bronzeT'],
+    ['sex','bronzeExagg'],['sgap','gapAngle'],['sbump','grooveBump'],['sng','numGrooves'],
+    ['sts','texScale'],['spm','patternMesh'],
+    ['sli','lightIntensity'],['slaz','lightAz'],['slel','lightEl'],['srim','rimInt'],
+    ['ssm','steelM'],['ssr','steelR'],['sbm','bronzeM'],['sbr','bronzeR']];
+  pairs.forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.value=S[k];});
+  const vals=[['vid',f0(S.innerD)],['vlen',f0(S.length)],
+    ['vbt',f2(S.bronzeT)],['vex',f0(S.bronzeExagg)],['vgap',f0(S.gapAngle)],
+    ['vbump',S.grooveBump.toFixed(1).replace('.',',')],['vng',f0(S.numGrooves)],
+    ['vts',S.texScale.toString().replace('.',',')],['vpm',f0(S.patternMesh)],
+    ['vli',f2(S.lightIntensity)],['vlaz',f0(S.lightAz)],['vlel',f0(S.lightEl)],
+    ['vrim',f2(S.rimInt)],['vsm',f2(S.steelM)],['vsr',f2(S.steelR)],
+    ['vbm',f2(S.bronzeM)],['vbr',f2(S.bronzeR)]];
+  vals.forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=v;});
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('on',b.dataset.pat===S.surfacePattern));
+  document.getElementById('trot').classList.toggle('on',S.autoRotate);
+  document.getElementById('tgap').classList.toggle('on',S.gapAngle>0);
+  userSteelTex=null; bronzeBaseImg=null; patternImg=null;
+  ['tname-s','tname-b'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='Standard';});
+  const np=document.getElementById('tname-p'); if(np)np.textContent='Keins';
+  ['tlbl-s','tlbl-b','tlbl-p'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('loaded');});
+  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===S.mode));
+  composeBronze(); applyCatalog();
+  setCam(S.mode); applyLighting(); rebuild();
+});
+
+// ─── INIT ────────────────────────────────────────────────────
+initTextures();
+applyCatalog();
+setCam(S.mode);
+rebuild();
+animate();
+// Loader erst nach erstem gerenderten Frame ausblenden
+requestAnimationFrame(()=>requestAnimationFrame(()=>document.getElementById('loader').classList.add('hide')));
+</script>
+</body>
+</html>
