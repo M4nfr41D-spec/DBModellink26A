@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>DEVA BM | Gleitlager 3D v6.4</title>
+<title>DEVA BM | Gleitlager 3D v6.5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -329,12 +329,12 @@ input[type=color]::-webkit-color-swatch{border:none}
 
     <!-- TAB: Gleitschicht -->
     <div class="cpage on" id="cp-surface">
-      <div data-only="bush">
+      <div>
         <div class="pats">
           <button class="pbtn on" data-pat="smooth"><span class="pi">○</span>Glatt</button>
-          <button class="pbtn" data-pat="cross"><span class="pi">◇</span>Kreuz-Reinigungsnuten<span class="pbadge">ab D1 &gt; 20</span></button>
-          <button class="pbtn" data-pat="dimples"><span class="pi">∷</span>Dimples<span class="pbadge">ab D1 ≥ 28 · SS 2–5</span></button>
-          <button class="pbtn" data-pat="spiral"><span class="pi">↗</span>Spiral-Schmiernut<span class="pbadge">Sonder</span></button>
+          <button class="pbtn" data-pat="cross"><span class="pi">◇</span>Kreuz-Reinigungsnuten<span class="pbadge" data-only="bush">ab D1 &gt; 20</span><span class="pbadge" data-only="axial">±45° · Abb. 6.2.2</span></button>
+          <button class="pbtn" data-pat="dimples"><span class="pi">∷</span>Dimples<span class="pbadge" data-only="bush">ab D1 ≥ 28 · SS 2–5</span><span class="pbadge" data-only="axial">Schmiertaschen</span></button>
+          <button class="pbtn" data-pat="spiral"><span class="pi" data-only="bush">↗</span><span class="pi" data-only="axial">✳</span><span data-only="bush">Spiral-Schmiernut</span><span data-only="axial">Radial-Schmiernut</span><span class="pbadge">Sonder</span></button>
         </div>
         <div class="pnote" id="patnote"></div>
         <div class="p">
@@ -788,7 +788,7 @@ const DEF = {
   innerD:50, outerD:55, length:50, wallSS:2.5, fitMode:'normal', bronzeT:0.70, bronzeExagg:2, gapAngle:0,
   surfacePattern:'smooth', grooveBump:0.5, numGrooves:14, mode:'bushing',
   // Axial
-  axMode:'ring', axOD:795, axID:755, axSeg:6, axGap:1, axSS:2.5, axSL:0.65, axExagg:20,
+  axMode:'ring', axPattern:'smooth', axOD:795, axID:755, axSeg:6, axGap:1, axSS:2.5, axSL:0.65, axExagg:20,
   axGraphite:true, axReal:false,
   // Gleitschicht-Textur
   texScale:3, patternMesh:4,
@@ -1282,6 +1282,59 @@ function scatter(list, ri, ro, a0, a1, y0, h, count, seed){
     list.push([Math.cos(a)*r, y0+seededRandom(seed+i*3.91)*h, -Math.sin(a)*r, 0.6+seededRandom(seed+i*5.77)*1.4]);
   }
 }
+// ── Gleitflächenmuster Axial (Kreuznut ±45° nach Abb. 6.2.2, Dimples, Radialnuten) – Rahmen = Segmentmitte c
+const AXPAT={smooth:'Glatt',cross:'Kreuz-Reinigungsnuten ±45°',dimples:'Dimples (Schmiertaschen)',spiral:'Radialnuten (Sonder)'};
+function flank(dist,hw){ const q=1-dist/hw; if(q<=0) return 0; const u=Math.min(1,q/0.64); return u*u*(3-2*u); }
+function axPatternFn(Ri,Ro,c,full){
+  const pat=S.axPattern, W=Ro-Ri, Rmid=(Ri+Ro)/2;
+  const P=Math.min(W,Ro*0.5)*14/S.numGrooves;          // Teilung (Dichte-Regler)
+  const hw=GW*P/2, cc=Math.cos(c), sc=Math.sin(c), r2=Math.SQRT1_2;
+  const dp=P/2, dRow=dp*0.866, dR=dp*0.3;
+  let dA=P/Rmid; if (full) dA=2*Math.PI/Math.max(3,Math.round(2*Math.PI/dA));   // geschlossene Scheibe: ganzzahlige Nutzahl
+  const fn=(x,z)=>{                                     // Welt (x,z) → Tiefe 0..1
+    const sx=x, sy=-z, s=sx*cc+sy*sc-Rmid, t=-sx*sc+sy*cc;   // lokal: s radial, t tangential (0,0 = Segmentmitte)
+    if (pat==='cross'){
+      const e1=s+t, e2=s-t, d1=Math.abs(e1-Math.round(e1/P)*P)*r2, d2=Math.abs(e2-Math.round(e2/P)*P)*r2;
+      return Math.max(flank(d1,hw),flank(d2,hw));
+    }
+    if (pat==='dimples'){
+      const row=Math.round(s/dRow), off=(row&1)?dp/2:0, col=Math.round((t-off)/dp);
+      const d=Math.hypot(s-row*dRow, t-(col*dp+off)); return d<dR ? Math.pow(1-(d/dR)**2,1.5) : 0;
+    }
+    if (pat==='spiral'){
+      const r=Math.hypot(sx,sy); let a=Math.atan2(sy,sx)-c; a=Math.atan2(Math.sin(a),Math.cos(a));
+      return flank(Math.abs(r*(a-Math.round(a/dA)*dA)), hw);
+    }
+    return 0;
+  };
+  return {fn, hw, dR};
+}
+// gemusterte Bronzeschicht: Deckfläche als Polarnetz (≥ 8 Zellen quer zur Nut) + Seitenwände mit Nutkerben
+function patternedBronze(Ri,Ro,a0,a1,c,st,bt,R,budget){
+  const {fn,hw,dR}=axPatternFn(Ri,Ro,c,(a1-a0)>=2*Math.PI-1e-6), depth=Math.min(bt*0.7,(Ro-Ri)*0.08)*(0.4+S.grooveBump);
+  const w=S.axPattern==='dimples'?2*dR:2*hw, W=Ro-Ri, h=Math.max(w/8,1e-4);
+  let nr=Math.max(4,Math.ceil(W/h)), na=Math.max(8,Math.ceil(Ro*(a1-a0)/h));
+  const k=budget/(nr*na); if (k<1){ const q=Math.sqrt(k); nr=Math.max(4,Math.round(nr*q)); na=Math.max(8,Math.round(na*q)); }
+  const full=(a1-a0)>=2*Math.PI-1e-6, top=st+bt;
+  const Y=(x,z)=>top-fn(x,z)*depth;
+  const tp=[], ti=[];
+  for (let i=0;i<=nr;i++){ const r=Ri+W*i/nr; for (let j=0;j<=na;j++){ const a=a0+(a1-a0)*j/na, x=r*Math.cos(a), z=-r*Math.sin(a); tp.push(x,Y(x,z),z); } }
+  for (let i=0;i<nr;i++) for (let j=0;j<na;j++){ const p=i*(na+1)+j, q=p+na+1; ti.push(p,q,p+1, p+1,q,q+1); }
+  const gT=new THREE.BufferGeometry(); gT.setAttribute('position',new THREE.Float32BufferAttribute(tp,3)); gT.setIndex(ti); gT.computeVertexNormals(); planarUV(gT,R);
+  // Wände: außen/innen (entlang Winkel), Stirnseiten des Segments (entlang Radius)
+  const wp=[], wi=[];
+  const strip=pts=>{ const b=wp.length/3; pts.forEach(([x,z])=>{ wp.push(x,Y(x,z),z, x,st,z); });
+    for (let m=0;m<pts.length-1;m++){ const a=b+m*2; wi.push(a,a+1,a+2, a+1,a+3,a+2); } };
+  [Ro,Ri].forEach(r=>{ const pts=[]; for (let j=0;j<=na;j++){ const a=a0+(a1-a0)*j/na; pts.push([r*Math.cos(a),-r*Math.sin(a)]); } strip(pts); });
+  if (!full) [a0,a1].forEach(a=>{ const pts=[]; for (let i=0;i<=nr;i++){ const r=Ri+W*i/nr; pts.push([r*Math.cos(a),-r*Math.sin(a)]); } strip(pts); });
+  const gW=new THREE.BufferGeometry(); gW.setAttribute('position',new THREE.Float32BufferAttribute(wp,3)); gW.setIndex(wi); gW.computeVertexNormals(); planarUV(gW,R);
+  model.add(new THREE.Mesh(gT,matB)); model.add(new THREE.Mesh(gW,matB));
+  return (x,y,z)=> y <= Y(x,z);                          // Filter: Graphit nur im verbliebenen Material
+}
+function bronzeLayer(Ri,Ro,a0,a1,c,st,bt,budget){
+  if (S.axPattern==='smooth'){ model.add(slab(segShape(Ri,Ro,a0,a1),bt,matB,st,Ro)); return null; }
+  return patternedBronze(Ri,Ro,a0,a1,c,st,bt,Ro,budget);
+}
 function buildAxRing(){
   const {Ro,Ri,st,bt}=AX();
   const n=S.axSeg, segRad=(n===1?360:Math.max(0.5,(360/n)-S.axGap))*D2R, gr=[];   // 1 = geschlossene Scheibe
@@ -1289,8 +1342,9 @@ function buildAxRing(){
     const c=i/n*2*Math.PI, a0=c-segRad/2, a1=c+segRad/2;
     const sh=segShape(Ri,Ro,a0,a1);
     model.add(slab(sh,st,matS,0,Ro));
-    model.add(slab(sh,bt,matB,st,Ro));
-    if (S.axGraphite) scatter(gr,Ri,Ro,a0,a1,st,bt,Math.round(120*segRad/(Math.PI/3)),100+i*1000);
+    const keep=bronzeLayer(Ri,Ro,a0,a1,c,st,bt,900000/n);
+    if (S.axGraphite){ const g0=gr.length; scatter(gr,Ri,Ro,a0,a1,st,bt,Math.round(120*segRad/(Math.PI/3)),100+i*1000);
+      if (keep){ const kept=gr.splice(g0).filter(e=>keep(e[0],e[1],e[2])); gr.push(...kept); } }
   }
   graphiteCloud(gr.slice(0,8000), Math.min(bt*0.05, Ro*0.004));
 }
@@ -1299,8 +1353,8 @@ function buildAxSegment(){
   const segRad=Math.max(0.5,(360/S.axSeg)-S.axGap)*D2R, a0=-segRad/2, a1=segRad/2;
   const bEnd=a1-(a1-a0)*0.25;     // Cutaway: 25 % Bronze freigelegt
   model.add(slab(segShape(Ri,Ro,a0,a1),st,matS,0,Ro));
-  model.add(slab(segShape(Ri,Ro,a0,bEnd),bt,matB,st,Ro));
-  if (S.axGraphite){ const gr=[]; scatter(gr,Ri,Ro,a0,bEnd,st,bt,350,5000); graphiteCloud(gr, Math.min(bt*0.05, Ro*0.004)); }
+  const keep=bronzeLayer(Ri,Ro,a0,bEnd,0,st,bt,900000);
+  if (S.axGraphite){ let gr=[]; scatter(gr,Ri,Ro,a0,bEnd,st,bt,350,5000); if (keep) gr=gr.filter(e=>keep(e[0],e[1],e[2])); graphiteCloud(gr, Math.min(bt*0.05, Ro*0.004)); }
 }
 function buildAxMacro(){
   const width=5, depth=3, st=(S.axSS-S.axSL)/S.axSS*2.4, bt=S.axSL/S.axSS*2.4;   // Dicke maßstäblich, Gesamt = 2,4 E.
@@ -1422,6 +1476,7 @@ function updateHUD(){
      <span>RADIAL</span> <span class="v">${f1((S.axOD-S.axID)/2)} mm</span><br>
      <span>SEGMENTE</span> <span class="v">${S.axSeg} × ${f2(C.segDeg)}°</span> <span>(min. ${C.nMin||'–'})</span><br>
      <span>ROHPLATTE</span> <span class="v">${C.P.W1}×${C.P.L}</span><br>
+     <span>GLEITFLÄCHE</span> <span class="v">${AXPAT[S.axPattern]}</span><br>
      ${S.axMode==='segment'?'<span>MODUS</span> <span class="v">CUTAWAY / FREILEGUNG</span><br>':''}
      ${S.axMode==='macro'?'<span>MODUS</span> <span class="v">SCHICHT-MAKRO (Dicke maßstäblich)</span><br>':''}
      <span>${S.axReal?'<span class="v">REALMASSSTAB 1:1</span>':'Dicke ×'+S.axExagg+' überhöht'}</span>`;
@@ -1926,7 +1981,7 @@ async function exportGLB(){
   try {
     const sc = isBush() ? MM/1000 : AX().U/1000;          // Szeneneinheit → Meter
     root.updateMatrixWorld(true); model.updateMatrix();
-    const J={ asset:{version:'2.0', generator:'DEVA BM Gleitlager 3D v6.4'}, scene:0, scenes:[{nodes:[0]}],
+    const J={ asset:{version:'2.0', generator:'DEVA BM Gleitlager 3D v6.5'}, scene:0, scenes:[{nodes:[0]}],
       nodes:[{name:baseName(), children:[], extras:{}}], meshes:[], materials:[], accessors:[], bufferViews:[], buffers:[{byteLength:0}],
       textures:[], images:[], samplers:[{magFilter:9729,minFilter:9987,wrapS:10497,wrapT:10497}], extensionsUsed:['KHR_texture_transform'] };
     const chunks=[]; let off=0;
@@ -2080,6 +2135,11 @@ BINDS.forEach(([id,key,fmt,act])=>{
 });
 
 // Modul / Modus
+function syncPatternUI(){
+  const cur = isBush()?S.surfacePattern:S.axPattern;
+  document.querySelectorAll('.pbtn').forEach(b=>{ b.classList.toggle('on',b.dataset.pat===cur); if(!isBush()) b.disabled=false; });
+  if (isBush()) applyCatalog(); else { $('patnote').textContent = S.axPattern==='spiral'?'Radialnuten: Sonderausführung':''; $('patnote').className='pnote'; }
+}
 function setModule(m){
   S.module=m; document.body.classList.remove('m-bush','m-axial'); document.body.classList.add('m-'+m);
   document.querySelectorAll('[data-module]').forEach(b=>b.classList.toggle('active',b.dataset.module===m));
@@ -2088,6 +2148,7 @@ function setModule(m){
     : 'Axialring · Anlaufscheibe · Segment <span class="ac">Stahlrücken + Sinterbronze mit Graphit</span>';
   $('stu-l').textContent = m==='bush' ? 'Position ↔ (Umfang)' : 'Position ↔';
   $('stv-l').textContent = m==='bush' ? 'Position ↕ (Breite)' : 'Position ↕';
+  syncPatternUI();
   genSteelBase(); composeBronze(); composeSteel(true);
   rebuild(); presetView();
 }
@@ -2107,7 +2168,8 @@ document.querySelectorAll('.ctab').forEach(btn=>btn.addEventListener('click',()=
 }));
 document.querySelectorAll('.pbtn').forEach(btn=>btn.addEventListener('click',()=>{
   document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('on',b===btn));
-  S.surfacePattern=btn.dataset.pat; applyCatalog(); rebuild();
+  if (isBush()){ S.surfacePattern=btn.dataset.pat; applyCatalog(); } else S.axPattern=btn.dataset.pat;
+  rebuild();
 }));
 // Ansicht-Presets
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
@@ -2189,7 +2251,7 @@ $('tcap').addEventListener('click',renderExport);   // Footer-PNG nutzt die Expo
 function syncAllUI(){
   syncBinds();
   inD1.value=S.innerD; inB1.value=S.length; inSS.value=S.wallSS.toFixed(1);
-  document.querySelectorAll('.pbtn').forEach(b=>b.classList.toggle('on',b.dataset.pat===S.surfacePattern));
+  syncPatternUI();
   document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===S.mode));
   document.querySelectorAll('[data-axmode]').forEach(b=>b.classList.toggle('active',b.dataset.axmode===S.axMode));
   document.querySelectorAll('[data-stmode]').forEach(b=>b.classList.toggle('on',b.dataset.stmode===S.stMode));
