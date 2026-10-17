@@ -1,21 +1,31 @@
-MIT License
+BM-FORGE26
+Copyright (c) 2026 Ing. Manfred Foissner. All rights reserved.
 
-Copyright (c) 2026 M4nn3y79
+This software, including its source code, design, user interface, texts,
+graphics and documentation (the "Software"), is the exclusive property of
+Ing. Manfred Foissner.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+No license is granted. Without the prior written permission of the copyright
+holder, you may not copy, reproduce, modify, merge, publish, distribute,
+sublicense, sell, rent, host for third parties, or create derivative works of
+the Software, in whole or in part.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Viewing the published application in a web browser for personal evaluation is
+permitted. Any other use requires a separate written agreement.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES
+OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE. Drawings, dimensions
+and visualisations produced by the Software are illustrations only and do not
+constitute a manufacturing release.
+
+Product names and trademarks mentioned in the Software belong to their
+respective owners.
+
+-------------------------------------------------------------------------------
+Third-party components
+
+three.js r128 (embedded in index.html)
+Copyright (c) 2010-2021 three.js authors
+Licensed under the MIT License: https://github.com/mrdoob/three.js/blob/r128/LICENSE
+The MIT license notice of three.js applies to that component only.
