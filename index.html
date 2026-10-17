@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>DEVA BM | Gleitlager 3D v6.5</title>
+<title>DEVA BM | Gleitlager 3D v6.6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -77,6 +77,26 @@ canvas:active{cursor:grabbing}
 .hud .k{color:var(--d1)}
 body.studio .hud{background:rgba(10,10,10,.62);padding:8px 11px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 body.clean .hud,body.clean .leg{display:none}
+/* 2D-Zeichnung */
+.drw{position:fixed;inset:0;z-index:95;display:none;flex-direction:column;background:#1a1a1a}
+.drw.on{display:flex}
+.drw-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;background:var(--surf);border-bottom:1px solid var(--b1)}
+.drw-t{font:600 13px/1 'Archivo',sans-serif;color:var(--tx)} .drw-i{font:400 10px/1 var(--mo);color:var(--d1);flex:1;min-width:120px}
+.drw-g{display:flex;gap:4px;flex-wrap:wrap} .drw-g .b{min-height:32px;padding:6px 9px}
+.b.go{color:var(--bg);background:var(--ac);border-color:var(--ac)}
+.drw-sel{background:#111;border:1px solid var(--b2);color:var(--tx);font:500 10px/1 var(--mo);padding:0 6px;min-height:32px}
+.drw-view{flex:1;overflow:auto;padding:14px;-webkit-overflow-scrolling:touch}
+.drw-paper{max-width:none;width:100%;margin:0 auto;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.5)}
+/* Reset-Bestätigung */
+.cfm{position:fixed;inset:0;z-index:99;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.cfm.on{display:flex}
+.cfm-box{width:min(340px,88vw);background:#141414;border:1px solid var(--b2);padding:18px 18px 14px}
+.cfm-t{font:600 15px/1.2 'Archivo',sans-serif;color:var(--tx);margin-bottom:8px}
+.cfm-x{font:400 11px/1.5 var(--mo);color:var(--d1);margin-bottom:14px}
+.cfm-b{display:flex;gap:6px}
+.cfm-yes{color:#fff;border-color:#c0392b;background:#c0392b}
+.cfm-yes:hover{background:#e74c3c;border-color:#e74c3c;color:#fff}
+#trst:hover{color:#e74c3c;border-color:#e74c3c}
 #vp.chk{background:repeating-conic-gradient(#1c1c1c 0 25%,#262626 0 50%) 0 0/22px 22px}
 .bigtog{width:100%;min-height:44px;font-size:10px;letter-spacing:.14em;margin-bottom:6px}
 .rbtn{width:100%;margin-top:6px;min-height:42px}
@@ -271,6 +291,27 @@ input[type=color]::-webkit-color-swatch{border:none}
 
 <div class="hud" id="hud"></div>
 <div class="busy" id="busy">Rendere …</div>
+<div class="cfm" id="cfm"><div class="cfm-box">
+  <div class="cfm-t">Alles zurücksetzen?</div>
+  <div class="cfm-x">Abmessungen, Muster, Texturen, Licht- und Studio-Einstellungen gehen auf Anfang. Das lässt sich nicht rückgängig machen.</div>
+  <div class="cfm-b"><button class="tog" id="cfm-no">Abbrechen</button><button class="tog cfm-yes" id="cfm-yes">Zurücksetzen</button></div>
+</div></div>
+<div class="drw" id="drw">
+  <div class="drw-bar">
+    <span class="drw-t">2D-Zeichnung</span><span class="drw-i" id="drw-info"></span>
+    <span class="drw-g">
+      <button class="b" data-dfmt="A3">A3</button><button class="b" data-dfmt="A4">A4</button>
+      <select id="drw-sc" class="drw-sel" title="Maßstab"></select>
+      <button class="b" id="drw-zo">−</button><button class="b" id="drw-zi">+</button>
+      <button class="b" id="drw-det">Einzelheit X</button><button class="b" id="drw-pat">Nutbild</button>
+    </span>
+    <span class="drw-g">
+      <button class="b" id="drw-svg">SVG ↓</button><button class="b" id="drw-png">PNG ↓</button><button class="b go" id="drw-print">Drucken / PDF</button>
+      <button class="b" id="drw-close">✕</button>
+    </span>
+  </div>
+  <div class="drw-view"><div class="drw-paper" id="drw-paper"></div></div>
+</div>
 
 <div class="leg">
   <div class="lhd"><span class="lhl"></span>Werkstoffaufbau</div>
@@ -710,6 +751,7 @@ input[type=color]::-webkit-color-swatch{border:none}
   </div>
   <div class="cfoot">
     <button class="tog on" id="trot">Auto-Rot</button>
+    <button class="rst"    id="t2d">2D ✎</button>
     <button class="rst"    id="tcap">PNG ↓</button>
     <button class="rst"    id="trst">Reset</button>
   </div>
@@ -1981,7 +2023,7 @@ async function exportGLB(){
   try {
     const sc = isBush() ? MM/1000 : AX().U/1000;          // Szeneneinheit → Meter
     root.updateMatrixWorld(true); model.updateMatrix();
-    const J={ asset:{version:'2.0', generator:'DEVA BM Gleitlager 3D v6.5'}, scene:0, scenes:[{nodes:[0]}],
+    const J={ asset:{version:'2.0', generator:'DEVA BM Gleitlager 3D v6.6'}, scene:0, scenes:[{nodes:[0]}],
       nodes:[{name:baseName(), children:[], extras:{}}], meshes:[], materials:[], accessors:[], bufferViews:[], buffers:[{byteLength:0}],
       textures:[], images:[], samplers:[{magFilter:9729,minFilter:9987,wrapS:10497,wrapT:10497}], extensionsUsed:['KHR_texture_transform'] };
     const chunks=[]; let off=0;
@@ -2072,6 +2114,323 @@ $('tclr-env').addEventListener('click',()=>{ $('tin-env').value=''; if(panoTex) 
   if (S.suEnv==='pano') S.suEnv='softbox'; if (S.suBg==='pano') S.suBg='grad'; updateEnv(); updateBg(); updateStudioVis(); });
 setupImgImport('tin-bg','tlbl-bg','tname-bg','tclr-bg','Keins', img => { bgImg=img; if (img) S.suBg='image'; else if (S.suBg==='image') S.suBg='grad'; updateBg(); updateStudioVis(); });
 
+
+// ════════════════ 2D-ZEICHNUNG · DIN-Stil (Projektionsmethode 1), SVG in Papier-mm ════════════════
+const DRW = { fmt:'A3', scale:'auto', detail:true, pattern:true };
+const SCALES=[20,10,5,2,1,0.5,0.2,0.1,0.05,0.02,0.01];
+const scTxt = s => s>=1 ? `${Math.round(s)}:1` : `1:${Math.round(1/s)}`;
+const nf = v => (Math.round(v*100)/100).toString().replace('.',',');
+const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function Pen(){ this.o=[]; }
+Pen.prototype = {
+  add(s){ this.o.push(s); },
+  line(x1,y1,x2,y2,c){ this.o.push(`<line x1="${x1.toFixed(3)}" y1="${y1.toFixed(3)}" x2="${x2.toFixed(3)}" y2="${y2.toFixed(3)}" class="${c||'k'}"/>`); },
+  poly(pts,c,fill,close=true){ this.o.push(`<${close?'polygon':'polyline'} points="${pts.map(p=>p[0].toFixed(3)+','+p[1].toFixed(3)).join(' ')}" class="${c||'k'}"${fill?` style="fill:${fill}"`:''}/>`); },
+  path(d,c,extra){ this.o.push(`<path d="${d}" class="${c||'k'}"${extra||''}/>`); },
+  circ(x,y,r,c){ this.o.push(`<circle cx="${x.toFixed(3)}" cy="${y.toFixed(3)}" r="${r.toFixed(3)}" class="${c||'k'}"/>`); },
+  text(x,y,t,sz=3.5,anchor='middle',rot=0,c='t'){ this.o.push(`<text x="${x.toFixed(3)}" y="${y.toFixed(3)}" font-size="${sz}" text-anchor="${anchor}" class="${c}"${rot?` transform="rotate(${rot.toFixed(2)} ${x.toFixed(3)} ${y.toFixed(3)})"`:''}>${esc(t)}</text>`); },
+};
+function arrow(P,x,y,ux,uy){ const L=2.6,w=0.45, bx=x-ux*L, by=y-uy*L; P.path(`M${x.toFixed(3)} ${y.toFixed(3)}L${(bx-uy*w).toFixed(3)} ${(by+ux*w).toFixed(3)}L${(bx+uy*w).toFixed(3)} ${(by-ux*w).toFixed(3)}Z`,'a'); }
+// Maßlinie zwischen zwei Papierpunkten, parallel verschoben um off (mm), Text über der Maßlinie
+function dim(P,ax,ay,bx,by,off,txt,o={}){
+  const dx=bx-ax, dy=by-ay, L=Math.hypot(dx,dy); if (L<1e-6) return;
+  const ux=dx/L, uy=dy/L, nx=-uy, ny=ux, sg=Math.sign(off)||1;
+  const a1x=ax+nx*off, a1y=ay+ny*off, b1x=bx+nx*off, b1y=by+ny*off;
+  if (!o.noExt && Math.abs(off)>0.5){ P.line(ax+nx*sg*1,ay+ny*sg*1,a1x+nx*sg*2,a1y+ny*sg*2,'d'); P.line(bx+nx*sg*1,by+ny*sg*1,b1x+nx*sg*2,b1y+ny*sg*2,'d'); }
+  if (L>=9){ P.line(a1x,a1y,b1x,b1y,'d'); arrow(P,a1x,a1y,-ux,-uy); arrow(P,b1x,b1y,ux,uy); }
+  else { P.line(a1x-ux*5,a1y-uy*5,b1x+ux*5,b1y+uy*5,'d'); arrow(P,a1x,a1y,ux,uy); arrow(P,b1x,b1y,-ux,-uy); }
+  let th=Math.atan2(dy,dx)*180/Math.PI; if (th>90) th-=180; if (th<=-90) th+=180;
+  const tr=th*Math.PI/180, upx=Math.sin(tr), upy=-Math.cos(tr);
+  let mx=(a1x+b1x)/2, my=(a1y+b1y)/2;
+  if (L<9){ mx=b1x+ux*(6+txt.length*1.1); my=b1y+uy*(6+txt.length*1.1); }
+  P.text(mx+upx*1.1, my+upy*1.1, txt, o.sz||3.5, 'middle', th);
+}
+function leader(P,x,y,tx,ty,txt,anchor){ P.line(x,y,tx,ty,'d'); P.line(tx,ty,tx+(anchor==='end'?-1:1)*Math.max(8,txt.length*1.9),ty,'d'); arrow(P,x,y,(x-tx)/Math.hypot(x-tx,y-ty),(y-ty)/Math.hypot(x-tx,y-ty));
+  P.text(tx+(anchor==='end'?-1:1)*1, ty-1.1, txt, 3, anchor==='end'?'end':'start'); }
+function centerCross(P,x,y,r){ P.line(x-r,y,x+r,y,'c'); P.line(x,y-r,x,y+r,'c'); }
+function cutMark(P,x1,y1,x2,y2,ux,uy,lbl){ // Schnittverlauf mit Pfeilen in Blickrichtung (ux,uy)
+  P.line(x1,y1,x2,y2,'c');
+  const L=Math.hypot(x2-x1,y2-y1), dx=(x2-x1)/L, dy=(y2-y1)/L;
+  [[x1,y1,1],[x2,y2,-1]].forEach(([x,y,s])=>{ P.line(x,y,x+dx*s*6,y+dy*s*6,'kk');
+    const px=x-dx*s*0, py=y-dy*s*0; P.line(px,py,px+ux*7,py+uy*7,'d'); arrow(P,px+ux*7,py+uy*7,ux,uy);
+    P.text(px+ux*7+ux*3.5-dx*s*3.5, py+uy*7+uy*3.5-dy*s*3.5+1.6, lbl, 5,'middle',0,'tb'); });
+}
+function frameAndTitle(P,W,H,info){
+  P.add(`<rect x="0" y="0" width="${W}" height="${H}" fill="#fff"/>`);
+  P.add(`<rect x="20" y="10" width="${W-30}" height="${H-20}" class="kk" fill="none"/>`);
+  const tw=180, th=40, tx=W-10-tw, ty=H-10-th;
+  P.add(`<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" class="k" fill="#fff"/>`);
+  [[tx,ty+10,tx+tw,ty+10],[tx,ty+20,tx+tw,ty+20],[tx,ty+30,tx+tw,ty+30],[tx+60,ty+10,tx+60,ty+40],[tx+120,ty+20,tx+120,ty+40],[tx+150,ty+20,tx+150,ty+40]].forEach(l=>P.line(...l,'d'));
+  const lab=(x,y,t)=>P.text(x+1.5,y+2.8,t,1.8,'start',0,'tl'), val=(x,y,t,sz=3.2,b)=>P.text(x+1.5,y+8.2,t,sz,'start',0,b?'tb':'t');
+  lab(tx,ty,'Benennung'); val(tx,ty,info.name,4.2,true);
+  lab(tx,ty+10,'Abmessung / Typ'); val(tx,ty+10,info.dim,3.4,true);
+  lab(tx+60,ty+10,'Werkstoff'); val(tx+60,ty+10,info.mat,2.6);
+  lab(tx,ty+20,'Status'); val(tx,ty+20,info.status,3.2,true);
+  lab(tx+60,ty+20,'Allgemeintoleranzen'); val(tx+60,ty+20,'ISO 2768-m',3);
+  lab(tx+120,ty+20,'Maßstab'); val(tx+120,ty+20,info.scale,3.2,true);
+  lab(tx+150,ty+20,'Format'); val(tx+150,ty+20,info.fmt,3.2,true);
+  lab(tx,ty+30,'Erstellt'); val(tx,ty+30,new Date().toLocaleDateString('de-AT')+' · DEVA BM Gleitlager 3D v6.6',2.4);
+  lab(tx+60,ty+30,'Hinweis'); val(tx+60,ty+30,'Illustration – keine Fertigungsfreigabe',2.4);
+  lab(tx+120,ty+30,'Projektion'); 
+  // Symbol Projektionsmethode 1 (ISO 128)
+  const sx=tx+128, sy=ty+36; P.add(`<path d="M${sx} ${sy-3}L${sx+7} ${sy-4.5}L${sx+7} ${sy+0.5}L${sx} ${sy-1}Z" class="d" fill="none"/>`);
+  P.circ(sx+14,sy-2,2.5,'d'); P.circ(sx+14,sy-2,1.2,'d');
+  lab(tx+150,ty+30,'Blatt'); val(tx+150,ty+30,'1 / 1',3);
+  return {tx,ty,tw,th};
+}
+function svgWrap(W,H,body){
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">
+<style>
+.k{stroke:#000;stroke-width:.5;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.kk{stroke:#000;stroke-width:.7;fill:none}
+.d{stroke:#000;stroke-width:.25;fill:none}
+.c{stroke:#000;stroke-width:.25;fill:none;stroke-dasharray:6 1.2 .8 1.2}
+.a{fill:#000;stroke:none}
+.t{font-family:Arial,Helvetica,sans-serif;fill:#000}
+.tb{font-family:Arial,Helvetica,sans-serif;fill:#000;font-weight:bold}
+.tl{font-family:Arial,Helvetica,sans-serif;fill:#555}
+</style>
+<defs>
+<pattern id="hS" width="2.4" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.4" stroke="#000" stroke-width=".2"/></pattern>
+<pattern id="hB" width="1.1" height="1.1" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="1.1" stroke="#000" stroke-width=".16"/></pattern>
+</defs>
+${body}
+</svg>`;
+}
+function pickScale(fits){ if (DRW.scale!=='auto') return +DRW.scale; for (const s of SCALES) if (fits(s)) return s; return SCALES[SCALES.length-1]; }
+function pickDetail(r0){ for (const s of [50,20,10,5,2,1]) if (r0*s<=30) return s; return 1; }
+// größter Detail-Maßstab, der in eine der freien Flächen passt (Platz für Maße rechts/links + Titel)
+function placeDetail(r0, rects){
+  for (const ds of [50,20,10,5,2,1]){ const R=r0*ds; if (R>48) continue;
+    for (const [x0,y0,x1,y1] of rects){ if (x1-x0 >= 2*R+46 && y1-y0 >= 2*R+22) return {ds, x:x0+23+R, y:y0+12+R}; } }
+  return null;
+}
+function notes(P,x,y,w,lines){ P.text(x,y,'Hinweise',2.8,'start',0,'tb'); lines.forEach((l,i)=>P.text(x,y+4.2+i*3.6,(i+1)+'. '+l,2.4,'start')); }
+
+// ── Buchse ───────────────────────────────────────────────
+function bushSectionProfile(theta){       // r(x) der Gleitfläche bei Winkel theta (real mm), wie 3D-Nutmodell
+  const B=row(), Ri=S.innerD/2, SL=S.bronzeT, len=S.length, C1=B.C1, c1r=Math.min(C1*TAN15,SL*0.8), HL=len/2;
+  const pat=S.surfacePattern, use=['spiral','cross','dimples'].includes(pat);
+  const depth=Math.min(SL*0.7,Ri*0.08)*(0.4+S.grooveBump);
+  const numG=S.numGrooves, pitch=1/numG, U=2*Math.PI*Ri, lc=len/U, dp=U/(numG*2), dRow=dp*0.866, dRad=dp*0.3;
+  const tN=((theta%(2*Math.PI))+2*Math.PI)%(2*Math.PI)/(2*Math.PI);
+  const pts=[], N=Math.max(240,Math.min(1600,Math.round(len*8)));
+  for (let k=0;k<=N;k++){
+    const x=len*k/N, y=x-HL, hN=x/len; let d=0;
+    if (use){
+      if (pat==='spiral'){ const ph=((((tN+hN*2)%pitch)+pitch)%pitch)/pitch; d=grooveProfile(ph,GW); }
+      else if (pat==='cross'){ const p1=((((tN+hN*lc)%pitch)+pitch)%pitch)/pitch, p2=((((tN-hN*lc)%pitch)+pitch)%pitch)/pitch; d=Math.max(grooveProfile(p1,GW),grooveProfile(p2,GW)); }
+      else { const s=tN*U, rw=Math.round(y/dRow), off=(rw&1)?dp/2:0, col=Math.round((s-off)/dp), dist=Math.hypot(s-(col*dp+off), y-rw*dRow); if (dist<dRad) d=Math.pow(1-(dist/dRad)**2,1.5); }
+    }
+    const a=Math.abs(y)-(HL-C1), base=a>0?Ri+a/C1*c1r:Ri;
+    pts.push([x, Math.max(base, Ri+d*depth)]);
+  }
+  return pts;
+}
+function drawBush(W,H){
+  const P=new Pen(), B=row(), D1=S.innerD, D2=S.outerD, Bw=S.length, SS=S.wallSS, SL=S.bronzeT, C1=B.C1, C2=B.C2;
+  const Ri=D1/2, Ra=D2/2, Rm=Ri+SL, c2r=Math.min(C2*TAN15,(SS-SL)*0.8), c1r=Math.min(C1*TAN15,SL*0.8);
+  const F=fitData(), std=S._why&&S._why.length===0;
+  const TB=frameAndTitle(P,W,H,{name:'Gleitlagerbuchse deva.bm', dim:`D1×D2×B1 = ${nf(D1)} × ${nf(D2)} × ${nf(Bw)}`,
+    mat:'Stahlrücken verkupfert + Sinterbronze/Graphit', status:std?'STANDARD (Katalog)':'SONDER – auf Anfrage', scale:'', fmt:DRW.fmt});
+  const notesH=W>=400?38:34, vTop=22, vBot=TB.ty-notesH-6, vL=26, vR=W-14;
+  const s=pickScale(sc=> D2*sc+30 <= vBot-vTop && (D2*sc + Bw*sc + 78) <= vR-vL);
+  // Vorderansicht
+  const fx=vL+8+D2*s/2, fy=vTop+10+D2*s/2;
+  P.text(fx, fy+Ra*s+17, 'Vorderansicht', 3.5, 'middle', 0, 'tb');
+  const g=S.gapAngle*D2R, arc=(r)=>{ if (g<=0) return P.circ(fx,fy,r*s,'k');
+    const a0=Math.PI/2+g/2, a1=Math.PI/2-g/2+2*Math.PI, p=a=>[fx+Math.cos(a)*r*s, fy-Math.sin(a)*r*s];
+    const [x0,y0]=p(a0),[x1,y1]=p(a1); P.path(`M${x0} ${y0}A${r*s} ${r*s} 0 1 0 ${x1} ${y1}`,'k'); };
+  [Ra, Ra-c2r, Ri+c1r, Ri].forEach(arc);
+  if (g>0){ [Math.PI/2+g/2, Math.PI/2-g/2].forEach(a=>P.line(fx+Math.cos(a)*Ri*s,fy-Math.sin(a)*Ri*s,fx+Math.cos(a)*Ra*s,fy-Math.sin(a)*Ra*s,'k')); }
+  else P.line(fx, fy-Ri*s, fx, fy-Ra*s, 'd');
+  leader(P, fx+0.3, fy-(Ri+Ra)/2*s, fx+Ra*s*0.75+6, fy-Ra*s*0.95-6, 'Stoßfuge', 'start');
+  centerCross(P,fx,fy,Ra*s+4);
+  cutMark(P, fx, fy-Ra*s-8, fx, fy+Ra*s+8, 1, 0, 'A');
+  // Schnitt A–A
+  const sx0=fx+Ra*s+30, sy=fy, X=x=>sx0+x*s, Y=y=>sy-y*s;
+  P.text(sx0+Bw*s/2, vTop+3, 'Schnitt A–A', 3.5, 'middle', 0, 'tb');
+  [[0,1],[Math.PI,-1]].forEach(([th,sg])=>{
+    const prof=bushSectionProfile(th);
+    const bro=prof.map(([x,r])=>[X(x),Y(sg*r)]).concat([[X(Bw),Y(sg*Rm)],[X(0),Y(sg*Rm)]]);
+    const stl=[[0,Rm],[Bw,Rm],[Bw,Ra-c2r],[Bw-C2,Ra],[C2,Ra],[0,Ra-c2r]].map(([x,y])=>[X(x),Y(sg*y)]);
+    P.poly(bro,'k','url(#hB)'); P.poly(stl,'k','url(#hS)');
+  });
+  // sichtbare Kanten der hinteren Bohrungshälfte
+  P.line(X(0),Y(Ri+c1r),X(0),Y(-(Ri+c1r)),'k'); P.line(X(Bw),Y(Ri+c1r),X(Bw),Y(-(Ri+c1r)),'k');
+  P.line(X(C1),Y(Ri),X(C1),Y(-Ri),'k'); P.line(X(Bw-C1),Y(Ri),X(Bw-C1),Y(-Ri),'k');
+  P.line(X(0)-4,sy,X(Bw)+4,sy,'c');
+  // Maße
+  dim(P, X(Bw/2), Y(-Ri), X(Bw/2), Y(Ri), 0, `Ø${nf(D1)} H${F.hg}`, {noExt:true});
+  dim(P, X(Bw), Y(-Ra), X(Bw), Y(Ra), 12, `Ø${nf(D2)}`);
+  dim(P, X(0), Y(-Ra), X(Bw), Y(-Ra), 9, `${nf(Bw)} ±0,25`);
+  // Einzelheit X
+  let r0=Math.max(SS*1.7, C2*2.2, C1*1.6), cxm=Math.min(Bw*0.4, r0*0.7), cym=(Ri+Ra)/2;
+  if (DRW.detail){
+    P.circ(X(cxm),Y(cym),r0*s,'d'); P.text(X(cxm)-r0*s-1.5, Y(cym)-r0*s+1, 'X', 4.5, 'end', 0, 'tb');
+    const pl=placeDetail(r0, [[X(Bw)+30, vTop, vR, vBot], [vL, fy+Ra*s+22, TB.tx-6, H-12], [X(0), fy+Ra*s+22, TB.tx-6, TB.ty-notesH-4]]);
+    if (pl){ const ds=pl.ds, dx0=pl.x, dy0=pl.y;
+      const DX=x=>dx0+(x-cxm)*ds, DY=y=>dy0-(y-cym)*ds;
+      P.add(`<clipPath id="cX"><circle cx="${dx0}" cy="${dy0}" r="${r0*ds}"/></clipPath><g clip-path="url(#cX)">`);
+      const prof=bushSectionProfile(0);
+      P.poly(prof.map(([x,r])=>[DX(x),DY(r)]).concat([[DX(Bw),DY(Rm)],[DX(0),DY(Rm)]]),'k','url(#hB)');
+      P.poly([[0,Rm],[Bw,Rm],[Bw,Ra-c2r],[Bw-C2,Ra],[C2,Ra],[0,Ra-c2r]].map(([x,y])=>[DX(x),DY(y)]),'k','url(#hS)');
+      P.add('</g>'); P.circ(dx0,dy0,r0*ds,'d');
+      P.text(dx0, dy0-r0*ds-3, `X (${scTxt(ds)})`, 3.5, 'middle', 0, 'tb');
+      const xr=Math.min(cxm+r0*0.55, Bw*0.5);
+      dim(P, DX(xr), DY(Ri), DX(xr), DY(Rm), (r0*ds-(DX(xr)-dx0))+8, `SL ${nf(SL)}`, {sz:3});
+      dim(P, DX(xr), DY(Ri), DX(xr), DY(Ra), (r0*ds-(DX(xr)-dx0))+18, `SS ${nf(SS)}`, {sz:3});
+      leader(P, DX(C2*0.45), DY(Ra-c2r*0.5), dx0-r0*ds*0.2, dy0-r0*ds-9, `C2 ${nf(C2)}×15°`, 'end');
+      leader(P, DX(C1*0.45), DY(Ri+c1r*0.5), dx0-r0*ds*0.15, dy0+r0*ds+6, `C1 ${nf(C1)}×15°`, 'end');
+    }
+  }
+  const pat={smooth:'glatt',cross:'Kreuz-Reinigungsnuten',dimples:'Dimples (Schmiertaschen)',spiral:'Spiral-Schmiernut (Sonder)'}[S.surfacePattern];
+  notes(P, TB.tx, TB.ty-notesH+2, TB.tw, [
+    'Maße in mm. Bohrungsmaß D1 gilt im eingebauten Zustand (Tab. 5.1).',
+    `D1 Ø${nf(D1)} H${F.hg} (${um(F.H.es)}/0) · Welle ${F.sl}7 (${um(F.W.es)}/${um(F.W.ei)}) · Lagerspiel ${F.smin}…${F.smax} µm`,
+    `Gehäusebohrung Ø${nf(D2)} H7 (${um(F.G.es)}/0), Ra 3,2 µm, Einführfase 20–40° · Welle Ra 0,2–0,8 µm`,
+    `Gleitfläche: ${pat}${S.surfacePattern!=='smooth'?' – Nutgeometrie schematisch':''}`,
+    'Stoßfuge nicht in Lastrichtung anordnen. Einpressen, nicht einschlagen.',
+    std?'Abmessung lt. Katalog deva.bm (Tab. 8.1.1).':'SONDER: '+S._why.join(' · '),
+  ]);
+  return {svg:svgWrap(W,H,P.o.join('\n')), scale:s};
+}
+
+// ── Axial ────────────────────────────────────────────────
+function drawAxial(W,H){
+  const P=new Pen(), Da=S.axOD, Di=S.axID, Ro=Da/2, Ri=Di/2, SS=S.axSS, SL=S.axSL, st=SS-SL, n=S.axSeg;
+  const C=S._axC||axCheck(), std=C.why.length===0;
+  const segRad=(n===1?360:Math.max(0.5,360/n-S.axGap))*D2R, full=n===1;
+  const TB=frameAndTitle(P,W,H,{name: n===1?'Anlaufscheibe deva.bm':`Axialsegmente deva.bm (${n} Stk)`, dim:`Ø${nf(Da)} / Ø${nf(Di)} × ${nf(SS)}`,
+    mat:'Stahlrücken + Sinterbronze/Graphit', status:std?'STANDARD (aus Gleitplatte)':'SONDER – auf Anfrage', scale:'', fmt:DRW.fmt});
+  const notesH=W>=400?38:34, vTop=22, vBot=TB.ty-notesH-6, vL=26, vR=W-14;
+  const s=pickScale(sc=> Da*sc + 62 <= (H-14)-vTop && Da*sc + 34 <= TB.tx-vL-4);
+  const cx=vL+12+Da*s/2;
+  // Schnitt A–A oben (Blick von unten → oben angeordnet, Methode 1)
+  const syB=vTop+26, X=x=>cx+x*s, Y=y=>syB-y*s;   // y=0 Unterseite Stahl
+  P.text(cx, vTop+3, 'Schnitt A–A', 3.5, 'middle', 0, 'tb');
+  const segAt=a=>{ const pitch=2*Math.PI/n; for (let i=0;i<n;i++){ let d=a-i*pitch; d=Math.atan2(Math.sin(d),Math.cos(d)); if (Math.abs(d)<=segRad/2+1e-9) return i*pitch; } return null; };
+  const depth=Math.min(SL*0.7,(Ro-Ri)*0.08)*(0.4+S.grooveBump);
+  [[0,1],[Math.PI,-1]].forEach(([ang,sg])=>{
+    const c=segAt(ang); if (c===null) return;
+    const fn = S.axPattern!=='smooth' ? axPatternFn(Ri,Ro,c,full).fn : null, N=300, top=[];
+    for (let k=0;k<=N;k++){ const r=Ri+(Ro-Ri)*k/N, x=sg*r; top.push([x, SS-(fn?fn(x,0)*depth:0)]); }
+    P.poly(top.map(([x,y])=>[X(x),Y(y)]).concat([[X(sg*Ro),Y(st)],[X(sg*Ri),Y(st)]]),'k','url(#hB)');
+    P.poly([[sg*Ri,0],[sg*Ro,0],[sg*Ro,st],[sg*Ri,st]].map(([x,y])=>[X(x),Y(y)]),'k','url(#hS)');
+  });
+  P.line(X(-Ri),Y(0),X(Ri),Y(0),'k'); P.line(X(-Ri),Y(SS),X(Ri),Y(SS),'k');
+  P.line(cx,Y(SS)-4,cx,Y(0)+4,'c');
+  dim(P, X(-Ro),Y(SS),X(Ro),Y(SS), -10, `Ø${nf(Da)}`);
+  dim(P, X(-Ri),Y(SS),X(Ri),Y(SS), -4.5, `Ø${nf(Di)}`);
+  // Draufsicht
+  const ty0=Y(0)+16+Da*s/2, PX=(r,a)=>[cx+r*Math.cos(a)*s, ty0-r*Math.sin(a)*s];
+  P.text(cx, Y(0)+11, 'Draufsicht (Gleitfläche)', 3.5, 'middle', 0, 'tb');
+  const segPath=(a0,a1)=>{ if (a1-a0>=2*Math.PI-1e-6) return `M${PX(Ro,0)}A${Ro*s} ${Ro*s} 0 1 0 ${PX(Ro,Math.PI)}A${Ro*s} ${Ro*s} 0 1 0 ${PX(Ro,0)}ZM${PX(Ri,0)}A${Ri*s} ${Ri*s} 0 1 1 ${PX(Ri,Math.PI)}A${Ri*s} ${Ri*s} 0 1 1 ${PX(Ri,0)}Z`;
+    const la=(a1-a0)>Math.PI?1:0; return `M${PX(Ro,a0)}A${Ro*s} ${Ro*s} 0 ${la} 0 ${PX(Ro,a1)}L${PX(Ri,a1)}A${Ri*s} ${Ri*s} 0 ${la} 1 ${PX(Ri,a0)}Z`; };
+  const segs=[]; for (let i=0;i<n;i++){ const c=i/n*2*Math.PI; segs.push([c-segRad/2,c+segRad/2,c]); }
+  const allPath=segs.map(([a0,a1])=>segPath(a0,a1)).join('');
+  if (DRW.pattern && S.axPattern!=='smooth'){
+    P.add(`<clipPath id="cS"><path d="${allPath}" clip-rule="evenodd"/></clipPath><g clip-path="url(#cS)">`);
+    const W0=Ro-Ri, Pp=Math.min(W0,Ro*0.5)*14/S.numGrooves, hw=GW*Pp/2, Rmid=(Ri+Ro)/2;
+    segs.forEach(([a0,a1,c])=>{
+      const cc=Math.cos(c), sc=Math.sin(c), L=Ro*2.2, toW=(sl,tl)=>{ const sx=(sl+Rmid)*cc - tl*sc, sy=(sl+Rmid)*sc + tl*cc; return [cx+sx*s, ty0-sy*s]; };
+      if (S.axPattern==='cross'){
+        const offs = 2*hw*s>=0.9 ? [-1,1] : [0];
+        for (let k=-Math.ceil(L/Pp)-2;k<=Math.ceil(L/Pp)+2;k++) offs.forEach(o=>{ const e=k*Pp+o*hw*Math.SQRT2;
+          // Linie s+t=e und s-t=e
+          let p1=toW((e+L)/2,(e-L)/2), p2=toW((e-L)/2,(e+L)/2); P.line(p1[0],p1[1],p2[0],p2[1],'d');
+          p1=toW((e+L)/2,-(e-L)/2); p2=toW((e-L)/2,-(e+L)/2); P.line(p1[0],p1[1],p2[0],p2[1],'d'); });
+      } else if (S.axPattern==='dimples'){
+        const dp=Pp/2, dRow=dp*0.866, dR=dp*0.3;
+        for (let rw=-Math.ceil(L/dRow);rw<=Math.ceil(L/dRow);rw++){ const sl=rw*dRow; const off=(rw&1)?dp/2:0;
+          for (let cl=-Math.ceil(L/dp);cl<=Math.ceil(L/dp);cl++){ const tl=cl*dp+off; const [px,py]=toW(sl,tl); const rr=Math.hypot(sl+Rmid,tl); if (rr<Ri-dR||rr>Ro+dR) continue; P.circ(px,py,dR*s,'d'); } }
+      } else {
+        let dA=Pp/Rmid; if (full) dA=2*Math.PI/Math.max(3,Math.round(2*Math.PI/dA));
+        for (let k=-Math.ceil(Math.PI/dA);k<=Math.ceil(Math.PI/dA);k++){ const a=c+k*dA, ca=Math.cos(a), sa=Math.sin(a);
+          (2*hw*s>=0.9?[-1,1]:[0]).forEach(o=>{ const ox=-sa*o*hw, oy=ca*o*hw; P.line(cx+(Ri*0.8*ca+ox)*s, ty0-(Ri*0.8*sa+oy)*s, cx+(Ro*1.1*ca+ox)*s, ty0-(Ro*1.1*sa+oy)*s,'d'); }); }
+      }
+    });
+    P.add('</g>');
+  }
+  P.path(allPath,'k',' fill-rule="evenodd"');
+  centerCross(P,cx,ty0,Ro*s+5);
+  cutMark(P, cx-Ro*s-9, ty0, cx+Ro*s+9, ty0, 0, -1, 'A');
+  if (n>1){ // Winkelmaß Segment 0
+    const cA=2*Math.PI/n, rA=Ro*s+8, a0=cA-segRad/2, a1=cA+segRad/2, p0=[cx+rA*Math.cos(a0), ty0-rA*Math.sin(a0)], p1=[cx+rA*Math.cos(a1), ty0-rA*Math.sin(a1)];
+    P.path(`M${p0[0]} ${p0[1]}A${rA} ${rA} 0 0 0 ${p1[0]} ${p1[1]}`,'d');
+    arrow(P,p0[0],p0[1],Math.sin(a0),Math.cos(a0)); arrow(P,p1[0],p1[1],-Math.sin(a1),-Math.cos(a1));
+    [a0,a1].forEach(a=>P.line(cx+Ro*s*Math.cos(a)+1*Math.cos(a), ty0-Ro*s*Math.sin(a)-Math.sin(a), cx+(rA+2)*Math.cos(a), ty0-(rA+2)*Math.sin(a),'d'));
+    P.text(cx+(rA+3)*Math.cos(cA), ty0-(rA+3)*Math.sin(cA)+1.2, `${nf(C.segDeg)}°`, 3.5, Math.cos(cA)>=0?'start':'end');
+  }
+  // Einzelheit X am Außenrand
+  if (DRW.detail){
+    const r0=Math.max(SS*1.6, (Ro-Ri)*0.12), cxm=Ro-r0*0.55, cym=SS/2;
+    P.circ(X(cxm),Y(cym),Math.max(r0*s,2.5),'d'); P.text(X(cxm)+Math.max(r0*s,2.5)+1.5, Y(cym)-2, 'X', 4.5, 'start', 0, 'tb');
+    const pl=placeDetail(r0, [[cx+Ro*s+22, vTop, vR, TB.ty-notesH-4], [cx+Ro*s+22, vTop, TB.tx-4, H-12]]);
+    if (pl){ const ds=pl.ds, ddx=pl.x, ddy=pl.y;
+      const DX=x=>ddx+(x-cxm)*ds, DY=y=>ddy-(y-cym)*ds, c=segAt(0), fn=(c!==null&&S.axPattern!=='smooth')?axPatternFn(Ri,Ro,c,full).fn:null;
+      P.add(`<clipPath id="cX"><circle cx="${ddx}" cy="${ddy}" r="${r0*ds}"/></clipPath><g clip-path="url(#cX)">`);
+      const top=[]; for (let k=0;k<=400;k++){ const r=Ri+(Ro-Ri)*k/400; top.push([r, SS-(fn?fn(r,0)*depth:0)]); }
+      P.poly(top.map(([x,y])=>[DX(x),DY(y)]).concat([[DX(Ro),DY(st)],[DX(Ri),DY(st)]]),'k','url(#hB)');
+      P.poly([[Ri,0],[Ro,0],[Ro,st],[Ri,st]].map(([x,y])=>[DX(x),DY(y)]),'k','url(#hS)');
+      P.add('</g>'); P.circ(ddx,ddy,r0*ds,'d');
+      P.text(ddx, ddy-r0*ds-3, `X (${scTxt(ds)})`, 3.5, 'middle', 0, 'tb');
+      const xl=cxm-r0*0.5;
+      dim(P, DX(xl),DY(st),DX(xl),DY(SS), -(DX(xl)-(ddx-r0*ds))-8, `SL ${nf(SL)}`, {sz:3});
+      dim(P, DX(xl),DY(0),DX(xl),DY(SS), -(DX(xl)-(ddx-r0*ds))-18, `${nf(SS)} ±0,05`, {sz:3});
+    }
+  }
+  notes(P, TB.tx, TB.ty-notesH+2, TB.tw, [
+    `Maße in mm. Fertigung aus Gleitplatte SS ${nf(SS)} (Tab. 8.2.1), Rohplatte ${C.P.W1} × ${C.P.L} mm.`,
+    `Gleitschicht SL ${nf(SL)} mm (min. ${nf(C.P.SL)}) · Stahlrücken ${nf(st)} mm · Dickentoleranz ±0,05.`,
+    n>1?`${n} Segmente à ${nf(C.segDeg)}° (Teilung ${nf(360/n)}°, Spalt ${nf(S.axGap)}°) · min. ${C.nMin||'–'} Segmente aus Rohplatte.`:`Einteilige Anlaufscheibe${C.nMin===1?' – aus einer Platte fertigbar':''}.`,
+    `Gleitfläche: ${AXPAT[S.axPattern]}${S.axPattern!=='smooth'?' – Nutgeometrie schematisch':''}`,
+    std?'Fertigbar aus Standardplatte.':'SONDER: '+C.why.join(' · '),
+  ]);
+  return {svg:svgWrap(W,H,P.o.join('\n')), scale:s};
+}
+function buildDrawing(){
+  const [W,H]=DRW.fmt==='A4'?[297,210]:[420,297];
+  const r = isBush()?drawBush(W,H):drawAxial(W,H);
+  // Maßstab ins Schriftfeld nachtragen
+  const tx=W-10-180, ty=H-10-40;
+  r.svg = r.svg.replace('</svg>', `<text x="${(tx+121.5).toFixed(3)}" y="${(ty+28.2).toFixed(3)}" font-size="3.2" text-anchor="start" class="tb">${scTxt(r.scale)}</text></svg>`);
+  r.W=W; r.H=H; return r;
+}
+// ── Overlay / Export
+let drwCur=null;
+function openDrawing(){ $('drw').classList.add('on'); renderDrawing(); }
+function renderDrawing(){
+  drwCur=buildDrawing();
+  $('drw-paper').innerHTML=drwCur.svg;
+  const sv=$('drw-paper').querySelector('svg'); sv.removeAttribute('width'); sv.removeAttribute('height'); sv.style.width='100%'; sv.style.height='auto';
+  document.querySelectorAll('[data-dfmt]').forEach(b=>b.classList.toggle('on',b.dataset.dfmt===DRW.fmt));
+  $('drw-det').classList.toggle('on',DRW.detail); $('drw-pat').classList.toggle('on',DRW.pattern);
+  $('drw-sc').value=DRW.scale; $('drw-info').textContent=`${DRW.fmt} quer · Maßstab ${scTxt(drwCur.scale)}`;
+}
+function drwName(ext){ return `${baseName()}_Zeichnung_${DRW.fmt}.${ext}`; }
+$('t2d').addEventListener('click',openDrawing);
+$('drw-close').addEventListener('click',()=>$('drw').classList.remove('on'));
+let drwZoom=1; const setZoom=z=>{ drwZoom=Math.max(1,Math.min(6,z)); $('drw-paper').style.width=(drwZoom*100)+'%'; };
+$('drw-zi').addEventListener('click',()=>setZoom(drwZoom*1.5)); $('drw-zo').addEventListener('click',()=>setZoom(drwZoom/1.5));
+document.querySelectorAll('[data-dfmt]').forEach(b=>b.addEventListener('click',()=>{ DRW.fmt=b.dataset.dfmt; renderDrawing(); }));
+$('drw-det').addEventListener('click',()=>{ DRW.detail=!DRW.detail; renderDrawing(); });
+$('drw-pat').addEventListener('click',()=>{ DRW.pattern=!DRW.pattern; renderDrawing(); });
+$('drw-sc').innerHTML='<option value="auto">Auto</option>'+SCALES.map(s=>`<option value="${s}">${scTxt(s)}</option>`).join('');
+$('drw-sc').addEventListener('change',e=>{ DRW.scale=e.target.value; renderDrawing(); });
+$('drw-svg').addEventListener('click',()=>download(new Blob([drwCur.svg],{type:'image/svg+xml'}), drwName('svg')));
+$('drw-png').addEventListener('click',()=>{
+  const dpi=DRW.fmt==='A3'?250:300, w=Math.round(drwCur.W/25.4*dpi), h=Math.round(drwCur.H/25.4*dpi);
+  const img=new Image(), url=URL.createObjectURL(new Blob([drwCur.svg],{type:'image/svg+xml'}));
+  img.onload=()=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(img,0,0,w,h);
+    URL.revokeObjectURL(url); c.toBlob(b=>download(b, drwName('png')),'image/png'); };
+  img.src=url;
+});
+$('drw-print').addEventListener('click',()=>{
+  const wdw=window.open('','_blank'); if(!wdw){ alert('Pop-up blockiert – bitte erlauben oder SVG exportieren.'); return; }
+  wdw.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${drwName('pdf')}</title><style>@page{size:${DRW.fmt} landscape;margin:0}html,body{margin:0;background:#fff}svg{display:block;width:${drwCur.W}mm;height:${drwCur.H}mm}</style></head><body>${drwCur.svg}<script>setTimeout(()=>print(),400)<\/script></body></html>`);
+  wdw.document.close();
+});
 
 // ─── UI-BINDINGS ─────────────────────────────────────────────
 // [sliderId, key, format, action]  — Anzeige in #v-<id>, Zahlenfeld in #n-<id>
@@ -2260,7 +2619,12 @@ function syncAllUI(){
   [['c-st','steelCol'],['c-br','bronzeCol'],['c-axst','axSteelCol'],['c-axbr','axBronzeCol']].forEach(([id,k])=>$(id).value=S[k]);
   updateSpinAxis();
 }
-$('trst').addEventListener('click',()=>{
+$('trst').addEventListener('click',()=>{ $('cfm').classList.add('on'); $('cfm-no').focus(); });
+$('cfm-no').addEventListener('click',()=>$('cfm').classList.remove('on'));
+$('cfm').addEventListener('click',e=>{ if (e.target.id==='cfm') $('cfm').classList.remove('on'); });
+document.addEventListener('keydown',e=>{ if (e.key==='Escape') $('cfm').classList.remove('on'); });
+$('cfm-yes').addEventListener('click',()=>{ $('cfm').classList.remove('on'); doReset(); });
+function doReset(){
   const m=S.module, mo=S.mode, axm=S.axMode;
   Object.assign(S,DEF); S.module=m; S.mode=mo; S.axMode=axm;   // Modul/Modus bleiben
   userSteelImg=null; bronzeBaseImg=null; patternImg=null;
@@ -2270,7 +2634,7 @@ $('trst').addEventListener('click',()=>{
   $('stxbox').classList.add('stx-off');
   bgImg=null; $('tname-bg').textContent='Keins'; $('tlbl-bg').classList.remove('loaded'); $('tin-bg').value='';
   applyCatalog(); syncAllUI(); applyLighting(); setModule(S.module); applyStudio();
-});
+}
 
 // ─── INIT ────────────────────────────────────────────────────
 applyLighting();
